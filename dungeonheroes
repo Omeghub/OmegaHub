@@ -441,7 +441,7 @@ Tabs.Raid:AddSlider("TPSpeedSlider", {
 -- =========================================================
 -- Sell
 -- =========================================================
-
+local Section = Tabs.Sell:AddSection("Sell is Buged")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
