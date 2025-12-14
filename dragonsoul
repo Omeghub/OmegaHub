@@ -1,0 +1,1116 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/addons"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Omega Hub I Dragons Soul I discord.gg/y8D9u3B4pb",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark",
+    Acrylic = false,
+    MinimizeKey = Enum.KeyCode.End 
+})
+
+Fluent:Notify({
+    Title = "Notification",
+    Content = "Script injected :)",
+    Duration = 5 
+})
+
+local Tabs = {
+    AutoFarm = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
+    AutoFarmApe = Window:AddTab({ Title = "Boss Farm ", Icon = "swords" }),
+    Players = Window:AddTab({ Title = "Player", Icon = "layers" }),
+    Stats = Window:AddTab({ Title = "Stats", Icon = "trending-up" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Teleport = Window:AddTab({ Title = "Teleport", Icon = "flag" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+local Section = Tabs.AutoFarm:AddSection("Auto Farm / Mobs / Boss")
+--------------- Dev
+---------------------------------------------------------------------
+--                        KILL AURA (TRYATTACK)                    --
+---------------------------------------------------------------------
+
+local player = game.Players.LocalPlayer
+local Replicated = game:GetService("ReplicatedStorage")
+local TryAttack = Replicated:WaitForChild("Events"):WaitForChild("TryAttack")
+
+local attackDelay = 0.15 -- délai minimal entre deux attaques
+local maxDistance = 45
+local lastAttack = 0
+
+local function getHumanoidRootPart()
+    local character = player.Character or player.CharacterAdded:Wait()
+    return character:WaitForChild("HumanoidRootPart")
+end
+
+local function isPlayerModel(model)
+    return game.Players:FindFirstChild(model.Name) ~= nil
+end
+
+local function attackNPC(npc)
+    if not npc then return end
+    if tick() - lastAttack < attackDelay then return end
+    lastAttack = tick()
+
+    local hrpNPC = npc:FindFirstChild("HumanoidRootPart")
+    if not hrpNPC then return end
+
+    local args = {
+        {
+            Victim = npc,
+            VictimPosition = hrpNPC.Position,
+            CurrentHeavy = 2,
+            LocalInfo = {
+                LockedOn = npc,
+                Flying = false
+            },
+            CurrentLight = 2,
+            CurrentLightCombo = 1,
+            Type = "Light",
+            AnimSet = "Generic"
+        }
+    }
+
+    -- Envoi de l'attaque
+    pcall(function()
+        TryAttack:FireServer(unpack(args))
+    end)
+end
+
+local function KillAura()
+    local liveFolder = workspace:WaitForChild("Main"):WaitForChild("Live")
+
+    while _G.tetstst do
+        task.wait(0.05) -- boucle réactive, mais anti-spam géré par lastAttack
+
+        local hrp = getHumanoidRootPart()
+        if not hrp then continue end
+
+        local closestDist = math.huge
+        local closestNPC = nil
+
+        for _, npc in ipairs(liveFolder:GetChildren()) do
+            -- Ignorer les vrais joueurs
+            if isPlayerModel(npc) then
+                continue
+            end
+
+            local hrpNPC = npc:FindFirstChild("HumanoidRootPart")
+            local nametag = npc:FindFirstChild("EnemyNPCTag") or npc:GetAttribute("Nametag")
+
+            if hrpNPC and nametag then
+                local dist = (hrp.Position - hrpNPC.Position).Magnitude
+                if dist <= maxDistance and dist < closestDist then
+                    closestDist = dist
+                    closestNPC = npc
+                end
+            end
+        end
+
+        if closestNPC then
+            attackNPC(closestNPC)
+        end
+    end
+end
+
+-- Toggle Kill Aura (assure-toi que le Toggle existe dans ton UI)
+Tabs.AutoFarm:AddToggle("Kill Aura", {
+    Title = "Kill Aura",
+    Callback = function(state)
+        _G.tetstst = state
+        if state then
+            task.spawn(KillAura)
+        end
+    end
+})
+
+-- Slider pour la distance (déjà dans ton script mais on le remet au cas où)
+Tabs.AutoFarm:AddSlider("DistanceSlider", {
+    Title = "Distance",
+    Description = "Set the maximum attack distance",
+    Default = 45, 
+    Min = 0,
+    Max = 75, 
+    Rounding = 1,
+    Callback = function(Value)
+        maxDistance = tonumber(Value) or maxDistance
+    end
+})
+
+-- Restart KillAura on respawn
+player.CharacterAdded:Connect(function()
+    if _G.tetstst then
+        task.spawn(KillAura)
+    end
+end)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local transformations = {"SuperSaiyan", "SuperSaiyan2", "SuperSaiyan3", "SuperSaiyan4"}
+local selectedTransformation = transformations[1] 
+
+local function activateTransformation()
+    local args = {[1] = {[1] = {["Mode"] = selectedTransformation}, [2] = "u", [3] = "UsedTransform", [4] = "7"}}
+    ReplicatedStorage:WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+end
+
+local TransformationDropdown = Tabs.AutoFarm:AddDropdown("TransformationDropdown", {
+    Title = "Select a transformation",
+    Values = transformations,
+    Default = 1,
+    Callback = function(selectedValue)
+        selectedTransformation = selectedValue
+    end
+})
+
+local Toggle = Tabs.AutoFarm:AddToggle("Auto Transformation", {
+    Title = "Auto transformation",
+    Default = false,
+    Callback = function(state)
+        _G.autoTransformationEnabled = state
+        if _G.autoTransformationEnabled then
+            player.CharacterAdded:Connect(function(character)
+                character:WaitForChild("HumanoidRootPart")
+                wait(2)
+                if _G.autoTransformationEnabled then
+                    activateTransformation()
+                end
+            end)
+
+            if player.Character then
+                activateTransformation()
+            end
+        end
+    end
+})
+
+
+------------------------------- Farm Keroken
+local Section = Tabs.AutoFarm:AddSection("Farm Keroken")
+
+local player = game.Players.LocalPlayer
+local attackDelay = 0.99
+local maxDistance = 25
+
+local function getHumanoidRootPart()
+    return player.Character and player.Character:WaitForChild("HumanoidRootPart") or player.CharacterAdded:Wait():WaitForChild("HumanoidRootPart")
+end
+
+local function attackDummy(npc)
+    local humanoidRootPartNPC = npc:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPartNPC then
+        local args = {
+            [1] = {
+                ["Victim"] = npc, 
+                ["VictimPosition"] = humanoidRootPartNPC.Position,
+                ["CurrentHeavy"] = 2,
+                ["LocalInfo"] = {
+                    ["Flying"] = false
+                },
+                ["CurrentLight"] = 2,
+                ["CurrentLightCombo"] = 2,
+                ["Type"] = "Light",
+                ["AnimSet"] = "Generic"
+            }
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("TryAttack"):FireServer(unpack(args))
+    end
+end
+
+local function FarmKeroken()
+    local liveFolder = workspace:WaitForChild("Main"):WaitForChild("Live")
+
+    while _G.tetstst do 
+        local humanoidRootPart = getHumanoidRootPart()
+        local enemiesInRange = {}
+
+        for _, npc in pairs(liveFolder:GetChildren()) do
+            local nametag = npc:FindFirstChild("Physical Training Dummy") or npc:GetAttribute("DisplayName")
+            if nametag then
+                local humanoidRootPartNPC = npc:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPartNPC then
+                    local distance = (humanoidRootPart.Position - humanoidRootPartNPC.Position).Magnitude
+                    if distance <= maxDistance then
+                        table.insert(enemiesInRange, npc)
+                    end
+                end
+            end
+        end
+
+        for _, npc in ipairs(enemiesInRange) do
+            attackDummy(npc) 
+            wait(attackDelay) 
+        end
+        wait(0)
+    end
+end
+
+local Toggle = Tabs.AutoFarm:AddToggle("Farm Keroken Aura", {
+    Title = "Farm Keroken Aura",
+    Callback = function(Keroken)
+        _G.tetstst = Keroken
+        if Keroken then
+            FarmKeroken()
+        else
+
+        end
+    end
+})
+
+local Toggle = Tabs.AutoFarm:AddToggle("Equipe Keroken", {
+    Title = "Equipe Keroken",
+    Callback = function(Keroke)
+        _G.tetstst = Keroke
+        if Keroke then
+            local args = {{{Move = "Kaioken",State = {Active = true}},
+		"2"
+	}}game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+        end
+    end
+})
+
+Tabs.AutoFarm:AddButton({
+    Title = "Tp Keroken Kong K",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local teleportLocation = workspace.Map:FindFirstChild("King K's Planet")
+        
+        if teleportLocation then
+            local targetPart = teleportLocation:FindFirstChildWhichIsA("BasePart")
+            if targetPart then
+                player.Character.HumanoidRootPart.CFrame = targetPart.CFrame
+            end
+        end
+    end
+})
+
+---------------------- Boss Farm
+local Section = Tabs.AutoFarmApe:AddSection("Auto Farm Ape")
+
+local player = game.Players.LocalPlayer
+local attackDelay = 0.99
+local maxDistance = 50
+
+local function getHumanoidRootPart()
+    local character = player.Character or player.CharacterAdded:Wait()
+    return character:WaitForChild("HumanoidRootPart")
+end
+
+local function attackApe(npc)
+    local humanoidRootPartNPC = npc:FindFirstChild("HumanoidRootPart")
+    
+    if humanoidRootPartNPC then
+        local victimPosition = humanoidRootPartNPC.Position
+        if victimPosition then
+            local args = {
+                [1] = {
+                    ["Victim"] = npc, 
+                    ["VictimPosition"] = victimPosition,
+                    ["CurrentHeavy"] = 1,
+                    ["LocalInfo"] = {
+                        ["Flying"] = false
+                    },
+                    ["CurrentLight"] = 1,
+                    ["CurrentLightCombo"] = 1,
+                    ["Type"] = "Light",
+                    ["AnimSet"] = "Generic"
+                }
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("TryAttack"):FireServer(unpack(args))
+        end
+    end
+end
+
+local function KillAura()
+    local liveFolder = workspace:WaitForChild("Main"):WaitForChild("Live")
+    
+    while _G.autoFarmApe do 
+        local humanoidRootPart = getHumanoidRootPart()
+        local ape = liveFolder:FindFirstChild("Ape")
+
+        if ape then
+            local humanoidRootPartNPC = ape:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPartNPC then
+                local distance = (humanoidRootPart.Position - humanoidRootPartNPC.Position).Magnitude
+                if distance <= maxDistance then
+                    attackApe(ape)
+                end
+            end
+        end
+        wait(attackDelay)
+    end
+end
+
+local Toggle = Tabs.AutoFarmApe:AddToggle("Auto Farm Ape", {
+    Title = "Auto Farm Ape (Risk)",
+    Callback = function(state)
+        _G.autoFarmApe = state
+        if state then
+            KillAura()
+        end
+    end
+})
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local Toggle = Tabs.AutoFarmApe:AddToggle("MyToggle", 
+{
+    Title = "TP and Attach to Ape (Risk)", 
+    Default = false,
+    Callback = function(state)
+        _G.tpToApe = state
+
+        if _G.tpToApe then
+            
+            spawn(function()
+                while _G.tpToApe do
+                    local ape = workspace:WaitForChild("Main"):WaitForChild("Live"):FindFirstChild("Ape")
+                    
+                    if ape and ape:FindFirstChild("HumanoidRootPart") then
+                        local humanoidRootPart = ape:FindFirstChild("HumanoidRootPart")
+
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            player.Character.HumanoidRootPart.CFrame = humanoidRootPart.CFrame
+                        end
+                    end
+
+                    wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+---------------------- PLayers
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+_G.speedEnabled = false
+_G.speedValue = 16
+
+local Toggle = Tabs.Players:AddToggle("Speed Toggle", 
+{
+    Title = "Enable Speed", 
+    Description = "Increase the character's speed.",
+    Default = false,
+    Callback = function(state)
+        _G.speedEnabled = state
+    end 
+})
+
+local function updateSpeed()
+    if _G.speedEnabled and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = _G.speedValue
+        end
+    else
+
+        if LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16 
+            end
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    updateSpeed()
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    wait(1)
+    updateSpeed()
+end)
+
+if LocalPlayer.Character then
+    updateSpeed()
+end
+
+local Slider = Tabs.Players:AddSlider("Speed Slider", 
+{
+    Title = "Adjust Speed",
+    Description = "Set the character's speed.",
+    Default = _G.speedValue, 
+    Min = 0,
+    Max = 250,
+    Rounding = 1,
+    Callback = function(value)
+        _G.speedValue = value
+        updateSpeed()
+    end
+})
+
+---------------------- Auto Quest
+local Section = Tabs.Players:AddSection("Auto Quest Daily")
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+local function getQuestPackages()
+    local packages = {}
+    for _, folder in ipairs(workspace.QuestPackages:GetChildren()) do
+        if folder:IsA("Folder") and folder.Name:sub(1, 6) == "Daily_" then
+            table.insert(packages, folder.Name)
+        end
+    end
+    return packages
+end
+
+local Dropdown = Tabs.Players:AddDropdown("QuestPackagesDropdown", {
+    Title = "Daily Quest",
+    Values = getQuestPackages(),
+    Multi = false,
+    Default = 1,
+    Callback = function(selectedValue)
+        local selectedFolder = workspace.QuestPackages:FindFirstChild(selectedValue)
+        if selectedFolder then
+            local giver = selectedFolder:FindFirstChild("Giver")
+            if giver and giver:IsA("Model") and giver.PrimaryPart then
+                local giverPosition = giver.PrimaryPart.Position
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(giverPosition)
+            end
+        end
+    end,
+})
+
+workspace.QuestPackages.ChildAdded:Connect(function(child)
+    if child:IsA("Folder") and child.Name:sub(1, 6) == "Daily_" then
+        Dropdown:AddValue(child.Name)
+    end
+end)
+
+workspace.QuestPackages.ChildRemoved:Connect(function(child)
+    if child:IsA("Folder") and child.Name:sub(1, 6) == "Daily_" then
+        Dropdown:RemoveValue(child.Name) 
+    end
+end)
+
+----------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+local lastPosition = nil
+
+local function getQuestPackages()
+    local packages = {}
+
+    for _, folder in ipairs(workspace.QuestPackages:GetChildren()) do
+        if folder:IsA("Folder") and not folder.Name:find("Halloween_") and not folder.Name:find("Daily_") then
+            local giver = folder:FindFirstChild("Giver")
+            if giver and giver:IsA("Model") and giver.PrimaryPart then
+                local distance = (player.Character.HumanoidRootPart.Position - giver.PrimaryPart.Position).Magnitude
+                if distance <= 1000 then
+                    table.insert(packages, {name = folder.Name, distance = distance})
+                end
+            end
+        end
+    end
+
+    table.sort(packages, function(a, b) return a.distance < b.distance end)
+
+    local sortedPackageNames = {}
+    for _, package in ipairs(packages) do
+        table.insert(sortedPackageNames, package.name)
+    end
+    
+    return sortedPackageNames
+end
+
+local questDropdown = Tabs.Players:AddDropdown("QuestPackagesDropdown", {
+    Title = "Select a quest",
+    Values = getQuestPackages(),
+    Multi = false,
+    Default = 1,
+    Callback = function(selectedValue)
+        local selectedFolder = workspace.QuestPackages:FindFirstChild(selectedValue)
+        if selectedFolder then
+            local giver = selectedFolder:FindFirstChild("Giver")
+            if giver and giver:IsA("Model") and giver.PrimaryPart then
+                local giverPosition = giver.PrimaryPart.Position
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(giverPosition)
+            end
+        end
+    end,
+})
+
+local function startConversation()
+    local args = {
+        [1] = {
+            [1] = true,
+            [2] = "5",
+            [3] = true,
+            [4] = "J"
+        }
+    }
+    ReplicatedStorage:WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+end
+
+local function acceptQuest(selectedQuest)
+    local args = {
+        [1] = {
+            [1] = selectedQuest,
+            [2] = "\6"
+        }
+    }
+    ReplicatedStorage:WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+end
+
+local function endConversation()
+    local args = {
+        [1] = {
+            [1] = false,
+            [2] = "5",
+            [3] = false,
+            [4] = "J"
+        }
+    }
+    ReplicatedStorage:WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+end
+
+local function areQuestEnemiesDefeated(selectedQuest)
+    local enemiesAlive = false
+    local liveFolder = workspace:WaitForChild("Main"):WaitForChild("Live")
+    
+    for _, npc in pairs(liveFolder:GetChildren()) do
+        local nametag = npc:FindFirstChild("EnemyNPCTag") or npc:GetAttribute("Nametag")
+        if nametag and nametag.Value == selectedQuest then
+            local health = npc:FindFirstChild("Health")
+            if health and health.Value > 0 then
+                enemiesAlive = true
+                break
+            end
+        end
+    end
+
+    return not enemiesAlive
+end
+
+local function autoQuest(selectedQuest)
+    if areQuestEnemiesDefeated(selectedQuest) then
+        startConversation()
+        wait(1)
+        acceptQuest(selectedQuest)
+        wait(0.5)
+        endConversation()
+    end
+end
+
+local Toggle = Tabs.Players:AddToggle("Auto Quest", {
+    Title = "Auto Quest",
+    Callback = function(state)
+        _G.autoQuestEnabled = state
+        if _G.autoQuestEnabled and questDropdown.Value then
+            while _G.autoQuestEnabled do
+                autoQuest(questDropdown.Value)
+                wait(10)
+            end
+        end
+    end
+})
+
+local function updateDropdownValuesIfMoved()
+    local currentPosition = player.Character.HumanoidRootPart.Position
+    if not lastPosition or (lastPosition - currentPosition).Magnitude > 1 then
+        updateDropdownValues()
+        lastPosition = currentPosition
+    end
+end
+
+local function updateDropdownValues()
+    local availableQuests = getQuestPackages()
+    questDropdown:SetValues(availableQuests)
+end
+
+spawn(function()
+    while true do
+        updateDropdownValuesIfMoved()
+        wait(15)
+    end
+end)
+
+workspace.QuestPackages.ChildAdded:Connect(function(child)
+    if child:IsA("Folder") and not child.Name:find("Halloween_") and not child.Name:find("Daily_") then
+        updateDropdownValues()
+    end
+end)
+
+workspace.QuestPackages.ChildRemoved:Connect(function(child)
+    if child:IsA("Folder") and not child.Name:find("Halloween_") and not child.Name:find("Daily_") then
+        updateDropdownValues()
+    end
+end)
+
+
+
+---------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local liveFolder = workspace:WaitForChild("Main"):WaitForChild("Live")
+local mobNames = {}
+local mobNamesSet = {}
+
+local Dropdown
+local selectedMobName = ""
+local teleportEnabled = false
+
+local function updateMobList()
+    mobNames = {}
+    mobNamesSet = {}
+
+    for _, mob in pairs(liveFolder:GetChildren()) do
+        if mob:IsA("Model") and mob:FindFirstChild("HumanoidRootPart") and not Players:FindFirstChild(mob.Name) then
+            if mob.Name ~= "EasyRigReference" then
+                local distance = (player.Character.HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude
+                if distance <= 600 and not mobNamesSet[mob.Name] then
+                    table.insert(mobNames, mob.Name)
+                    mobNamesSet[mob.Name] = true
+                end
+            end
+        end
+    end
+
+    if Dropdown then
+        Dropdown:SetValues(mobNames)
+    end
+end
+
+local function teleportToMob()
+    while teleportEnabled do
+        local mob = liveFolder:FindFirstChild(selectedMobName)
+        if mob and mob:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = mob.HumanoidRootPart.Position + Vector3.new(0, 10, 0) -- 10 studs au-dessus du monstre
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+        end
+        wait(1)
+    end
+end
+
+player.CharacterAdded:Connect(function(character)
+    if teleportEnabled then
+        spawn(teleportToMob)
+    end
+end)
+
+Dropdown = Tabs.Players:AddDropdown("MobDropdown", {
+    Title = "Select a monster",
+    Values = mobNames,
+    Default = 1,
+    Callback = function(selectedValue)
+        selectedMobName = selectedValue
+    end
+})
+
+local Toggle = Tabs.Players:AddToggle("TeleportToggle", {
+    Title = "Automatic teleportation",
+    Default = false,
+    Callback = function(state)
+        teleportEnabled = state
+        if teleportEnabled then
+            spawn(teleportToMob)
+        end
+    end
+}) 
+
+spawn(function()
+    while wait(15) do
+        updateMobList()
+    end
+end)
+
+updateMobList()
+---------------------- Misc
+-------------------
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local function getServerList()
+    local servers = {}
+    local placeId = game.PlaceId
+    local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+
+    local success, response = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if success and response and response.data then
+        for _, server in ipairs(response.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                table.insert(servers, server.id)
+            end
+        end
+    end
+
+    return servers
+end
+
+local function joinNewServer()
+    local servers = getServerList()
+    if #servers > 0 then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Players.LocalPlayer)
+    else
+    end
+end
+
+local ServerHopButton = Tabs.Misc:AddButton({
+    Title = "server hop",
+    Callback = function()
+        joinNewServer()
+    end
+})
+
+-------------------------- Stats
+
+local Toggle = Tabs.Stats:AddToggle("Stats Strength", {
+    Title = "Stats Strength",
+    Callback = function(test)
+        _G.StatsStrength = test
+        while _G.StatsStrength do
+            local args = {{{Stat = "Strength",Amount = 1},
+		"\166"
+	}}game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+            wait(0.5)
+        end 
+    end
+})
+-----
+local Toggle = Tabs.Stats:AddToggle("Ki Power", {
+    Title = "Ki Power",
+    Callback = function(test)
+        _G.KiPower = test
+        while _G.KiPower do
+            local args = {{{Stat = "KiPower",Amount = 1},
+		"\166"
+        }}game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+            wait(0.5)
+        end 
+    end
+})
+-----
+local Toggle = Tabs.Stats:AddToggle("Max Health", {
+    Title = "Max Health",
+    Callback = function(test)
+        _G.MaxHealth = test
+        while _G.MaxHealth do
+            local args = {{{Stat = "MaxHealth",Amount = 1},
+		"\166"
+        }}game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+            wait(0.5)
+        end 
+    end
+})
+----
+local Toggle = Tabs.Stats:AddToggle("Max Ki", {
+    Title = "Max Ki",
+    Callback = function(test)
+        _G.MaxKi = test
+        while _G.MaxKi do
+            local args = {{{Stat = "KiMax",Amount = 1},
+		"\166"
+        }}game:GetService("ReplicatedStorage"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+            wait(0.5)
+        end 
+    end
+})
+------------------- Teleport
+
+local Teleport = Tabs.Teleport:AddToggle("Teleport", {
+    Title = "Teleport Exp",
+    Callback = function(teleport)
+        _G.teleportep = teleport
+        while _G.teleportep do
+            local XPGemsFolder = game.workspace:WaitForChild("XPGems")
+            local islands = XPGemsFolder:GetChildren()
+            local randomIsland = islands[math.random(1, #islands)]           
+            if randomIsland then
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = randomIsland.CFrame
+            end
+            wait(1)
+        end
+    end
+})
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+local Teleport = Tabs.Teleport:AddToggle("Teleport Dragon Ball", {
+    Title = "Teleport Dragon Ball",
+    Callback = function(teleport)
+        _G.teleportexp = teleport
+
+        local function teleportToDragonBall(dragonBall)
+            if dragonBall and dragonBall:IsA("Model") and dragonBall.PrimaryPart then
+                local position = dragonBall.PrimaryPart.Position
+
+                if position and position.X ~= 0 and position.Y ~= 0 and position.Z ~= 0 then
+                    local character = player.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        character.HumanoidRootPart.CFrame = CFrame.new(position)
+                        wait(1)
+
+                        local prompt = dragonBall:FindFirstChildWhichIsA("ProximityPrompt")
+                        if prompt then
+                            wait(0.5)
+                            prompt:Trigger()
+                        end
+                    end
+                end
+            end
+        end
+
+        while _G.teleportexp do
+            local dragonBalls = workspace:GetChildren()
+            for _, obj in ipairs(dragonBalls) do
+                if obj:IsA("Model") and obj.Name == "DragonBall" then
+                    teleportToDragonBall(obj)
+                end
+            end
+            wait(2)
+        end
+    end
+})
+
+local player = game.Players.LocalPlayer
+local lootboxTeleportEnabled = false
+
+local function tpToLootbox(lootbox)
+    local common = lootbox:FindFirstChild("Common")
+
+    if common then
+        local primaryPart = common:FindFirstChild("PrimaryPart") or common.PrimaryPart
+
+        if primaryPart then
+            player.Character.HumanoidRootPart.CFrame = primaryPart.CFrame
+            return true
+        end
+    end
+
+    return false
+end
+
+local function teleportToLootboxes()
+    while lootboxTeleportEnabled do
+        local foundLootbox = false
+        for _, map in pairs(workspace.Map:GetChildren()) do
+            if map:FindFirstChild("_Dev") and map._Dev:FindFirstChild("Lootboxes") then
+                for _, lootbox in pairs(map._Dev.Lootboxes:GetChildren()) do
+                    if tpToLootbox(lootbox) then
+                        foundLootbox = true
+                        while lootboxTeleportEnabled and lootbox:FindFirstChild("Common") do
+                            wait(1)
+                        end
+                    end
+
+                    if not lootboxTeleportEnabled then
+                        return
+                    end
+                end
+            end
+
+            if not lootboxTeleportEnabled then
+                return
+            end
+        end
+
+        if not foundLootbox then
+            wait(5)
+        end
+    end
+end
+
+local Toggle = Tabs.Teleport:AddToggle("LootboxTeleportToggle", 
+{
+    Title = "Auto Teleport Lootboxes", 
+    Default = false,
+    Callback = function(state)
+        lootboxTeleportEnabled = state
+        if lootboxTeleportEnabled then
+            spawn(function() teleportToLootboxes() end)
+        end
+    end
+})
+----
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local spawnLocations = {}
+
+local function populateSpawnLocations()
+    spawnLocations = {}
+    
+    for _, area in pairs(workspace.Map:GetChildren()) do
+        if area:IsA("Folder") then
+            local devFolder = area:FindFirstChild("_Dev")
+            if devFolder then
+                local spawnFolder = devFolder:FindFirstChild("Spawns")
+                if spawnFolder then
+                    for _, spawn in pairs(spawnFolder:GetChildren()) do
+                        if spawn:IsA("SpawnLocation") or spawn:IsA("Part") then
+                            spawnLocations[area.Name] = spawn
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+populateSpawnLocations()
+
+local function teleportToLocation(selectedLocation)
+    local spawn = spawnLocations[selectedLocation]
+    if spawn and spawn:IsA("BasePart") then
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character.HumanoidRootPart.CFrame = spawn.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+end
+
+local Dropdown = Tabs.Teleport:AddDropdown("SelectSpawnLocation", {
+    Title = "Select Spawn Location",
+    Description = "Choose a location to fast travel",
+    Values = {},
+    Default = 1,
+    Callback = teleportToLocation
+})
+
+local spawnNames = {}
+for name, _ in pairs(spawnLocations) do
+    table.insert(spawnNames, name)
+end
+Dropdown:SetValues(spawnNames)
+
+---------------
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+SaveManager:LoadAutoloadConfig()
+
+Window:SelectTab(1)
+
+Fluent:Notify({
+    Title = "Omega Hub",
+    Content = "The script has been loaded.",
+    Duration = 5
+})
+
+----------------------------------------
+
+-- =========================
+-- MOBILE / PC BUTTON CIRCULAR & DRAGGABLE (LeftControl)
+-- =========================
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FluentMobileButton"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+local openButton = Instance.new("ImageButton")
+openButton.Size = UDim2.new(0, 40, 0, 40) -- bouton plus petit
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+openButton.BackgroundTransparency = 0.5
+openButton.Image = "rbxassetid://133520358863074" -- Remplace par ton image
+openButton.ScaleType = Enum.ScaleType.Fit
+openButton.BorderSizePixel = 0
+openButton.Parent = screenGui
+openButton.ZIndex = 10
+
+-- Make it fully round
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 20) -- moitié de 40 pour rester rond
+uicorner.Parent = openButton
+
+
+-- Drag functionality
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    openButton.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = openButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+openButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Toggle menu by simulating LeftControl (works on PC)
+openButton.MouseButton1Click:Connect(function()
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+end)
+
+-- Function to remove the mobile button
+local function removeButton()
+    if openButton and openButton.Parent then
+        openButton:Destroy()
+    end
+end
+
+-- Hook Fluent closing
+if Window.UI and Window.UI.CloseButton then
+    Window.UI.CloseButton.MouseButton1Click:Connect(function()
+        removeButton()
+    end)
+else
+    -- fallback si CloseButton n'existe pas
+    if Window.OnClose then
+        local oldClose = Window.OnClose
+        Window.OnClose = function()
+            removeButton()
+            if oldClose then oldClose() end
+        end
+    end
+end
