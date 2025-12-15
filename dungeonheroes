@@ -10,10 +10,6 @@ local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 
--- =========================================================
--- UI
--- =========================================================
-
 local Window = Fluent:CreateWindow({
    Title = "Omega Hub I Dungeon Heroes",
    TabWidth = 160,
@@ -39,7 +35,6 @@ local Tabs = {
 
 -- =========================================================
 --  KILL AURA FIXÉ (RESTART APRÈS LA MORT)
--- =========================================================
 
 _G.KillAuraEnabled = false
 _G.KillAuraRunning = false
@@ -106,7 +101,6 @@ local function KillAura()
     _G.KillAuraRunning = false
 end
 
--- UI Kill Aura
 local Section = Tabs.Main:AddSection("Kill Aura")
 
 Tabs.Main:AddToggle("KillAura", {
@@ -122,7 +116,7 @@ Tabs.Main:AddSlider("AttackDelaySlider", {
     Min = 0.2,
     Max = 1,
     Default = attackDelay,
-    Rounding = 2, -- <-- ajouté
+    Rounding = 2,
     Callback = function(value)
         attackDelay = value
     end
@@ -130,20 +124,17 @@ Tabs.Main:AddSlider("AttackDelaySlider", {
 
 -- =========================================================
 -- Kill Auras Pets
--- =========================================================
--- Variables
+
 local player = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local mobsFolder = workspace:WaitForChild("Mobs")
 local remotePetAttack = ReplicatedStorage.Systems.Combat.PetDamage
 
--- Kill Aura Pet
 _G.PetKillAuraEnabled = false
 _G.PetKillAuraRunning = false
 local petAttackDelay = 0.2
 local petKillAuraRange = 100
 
--- Fonction pour obtenir ton pet
 local function getPlayerPet()
     for _, pet in ipairs(mobsFolder:GetChildren()) do
         if pet:IsA("Model") and pet:GetAttribute("Owner") == player.Name then
@@ -153,13 +144,12 @@ local function getPlayerPet()
     return nil
 end
 
--- Fonction pour obtenir les mobs proches
 local function getClosestMobsForPet(hrp)
     local closest, dist = nil, petKillAuraRange
     for _, mob in ipairs(mobsFolder:GetChildren()) do
         if mob:IsA("Model") 
            and mob:FindFirstChild("HumanoidRootPart") 
-           and mob:GetAttribute("Owner") == nil then  -- ignore les autres pets
+           and mob:GetAttribute("Owner") == nil then
             local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
             if d < dist then
                 dist = d
@@ -170,7 +160,6 @@ local function getClosestMobsForPet(hrp)
     return closest
 end
 
--- Fonction Kill Aura Pet avec tp vers le joueur
 local function PetKillAura()
     if _G.PetKillAuraRunning then return end
     _G.PetKillAuraRunning = true
@@ -185,13 +174,11 @@ local function PetKillAura()
 
         local hrp = char.HumanoidRootPart
 
-        -- TELEPORTER LE PET VERS LE JOUEUR
         local petHRP = pet:FindFirstChild("HumanoidRootPart")
         if petHRP then
-            petHRP.CFrame = hrp.CFrame + Vector3.new(2,0,2) -- léger décalage
+            petHRP.CFrame = hrp.CFrame + Vector3.new(2,0,2)
         end
 
-        -- Attaquer le mob le plus proche
         local mob = getClosestMobsForPet(hrp)
         if mob and mob.Parent then
             local attackFolder = ReplicatedStorage.Mobs:FindFirstChild(pet.Name)
@@ -218,12 +205,8 @@ local function PetKillAura()
     _G.PetKillAuraRunning = false
 end
 
--- =======================
--- UI Fluent Library
--- =======================
 local Section = Tabs.Main:AddSection("Kill Aura Pet")
 
--- Toggle Kill Aura Pet
 Tabs.Main:AddToggle("PetKillAura", {
     Title = "Enable Pet Kill Aura",
     Default = false,
@@ -235,7 +218,6 @@ Tabs.Main:AddToggle("PetKillAura", {
     end
 })
 
--- Slider pour le délai d'attaque
 Tabs.Main:AddSlider("PetAttackDelay", {
     Title = "Attack Delay",
     Min = 0.1,
@@ -252,7 +234,6 @@ Tabs.Main:AddSlider("PetAttackDelay", {
 
 -- =========================================================
 -- AUTO START DUNGEON
--- =========================================================
 
 _G.AutoStartDungeon = false
 
@@ -282,7 +263,6 @@ Tabs.Raid:AddToggle("AutoStart", {
 
 -- =========================================================
 -- AUTO NEXT DIFFICULTY / AUTO RUN AGAIN
--- =========================================================
 
 _G.AutoReplayDungeon = false
 
@@ -320,8 +300,7 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
 })
 
 -- =========================================================
---  AUTO FARM (TP SUR MOB LE PLUS PROCHE)
--- =========================================================
+--  AUTO FARM
 
 local tpHeight = 50
 local tpSpeed = 200
@@ -369,8 +348,8 @@ local function getNearestMob(hrp)
     end
 end
 
-local oscillationAmplitude = 20   -- distance avant/arrière
-local oscillationSpeed = 5    -- vitesse de l'oscillation
+local oscillationAmplitude = 20
+local oscillationSpeed = 5
 
 local function AutoFarm()
     local startTime = tick()
@@ -381,7 +360,6 @@ local function AutoFarm()
             local mob = getNearestMob(hrp)
 
             if mob then
-                -- Calcul de l'oscillation en avant/arrière
                 local timeElapsed = tick() - startTime
                 local oscillation = math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
@@ -440,46 +418,26 @@ Tabs.Raid:AddSlider("TPSpeedSlider", {
 })
 -- =========================================================
 -- Sell
--- =========================================================
-
--- =========================================================
--- Sell (Toggle Rarities Version - SAFE)
--- =========================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
-local inventory = player
-    :WaitForChild("PlayerGui")
-    :WaitForChild("Profile")
-    :WaitForChild("Inventory")
+local inventory = player:WaitForChild("PlayerGui"):WaitForChild("Profile"):WaitForChild("Inventory")
 
-local sellItemEvent = ReplicatedStorage
-    :WaitForChild("Systems")
-    :WaitForChild("ItemSelling")
-    :WaitForChild("SellItem")
-
--- =========================================================
--- GLOBAL STATE (SAFE FOR SAVE / LOAD)
--- =========================================================
+local sellItemEvent = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("ItemSelling"):WaitForChild("SellItem")
 
 _G.AutoSellEquipment = _G.AutoSellEquipment or false
 
--- true = rareté activée
 _G.RarityToggles = _G.RarityToggles or {
-    [1] = true,  -- Commun
-    [2] = true,  -- Uncommun
-    [3] = true,  -- Rare
-    [4] = true,  -- Epic
-    [5] = false,  -- Legendary
-    [6] = false, -- Mythic
-    [7] = false, -- Primordial
+    [1] = true,
+    [2] = true,
+    [3] = true,
+    [4] = true,
+    [5] = false,
+    [6] = false,
+    [7] = false, 
 }
-
--- =========================================================
--- RARITY LIST
--- =========================================================
 
 local rarityList = {
     [1] = "Commun",
@@ -490,10 +448,6 @@ local rarityList = {
     [6] = "Mythic",
     [7] = "Primordial"
 }
-
--- =========================================================
--- AUTO SELL LOOP (THREAD UNIQUE)
--- =========================================================
 
 task.spawn(function()
     while true do
@@ -515,11 +469,6 @@ task.spawn(function()
     end
 end)
 
--- =========================================================
--- UI
--- =========================================================
-
--- Toggle principal
 Tabs.Sell:AddToggle("AutoSellEquipmentToggle", {
     Title = "Auto Sell Equipment",
     Default = _G.AutoSellEquipment,
@@ -528,7 +477,6 @@ Tabs.Sell:AddToggle("AutoSellEquipmentToggle", {
     end
 })
 
--- Toggles par rareté
 for rarityId, rarityName in ipairs(rarityList) do
     Tabs.Sell:AddToggle("SellRarity_" .. rarityId, {
         Title = "Sell " .. rarityName,
@@ -542,7 +490,7 @@ end
 
 -- =========================================================
 -- Misc
--- =========================================================
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -550,10 +498,8 @@ local player = Players.LocalPlayer
 local inventory = player:WaitForChild("PlayerGui"):WaitForChild("Profile"):WaitForChild("Inventory")
 local openChestEvent = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Pets"):WaitForChild("OpenPetChest")
 
--- Variable globale pour le toggle
 _G.AutoOpenPetChests = false
 
--- Fonction pour ouvrir tous les PetChests
 local function OpenPetChests()
     while _G.AutoOpenPetChests do
         for _, item in ipairs(inventory:GetChildren()) do
@@ -578,16 +524,8 @@ Tabs.Misc:AddToggle("AutoOpenPetChestsToggle", {
 })
 
 
-
-
-
-
-
-
-
 -- =========================================================
 -- RE-START AUTOMATIQUE APRÈS MORT
--- =========================================================
 
 player.CharacterAdded:Connect(function()
     task.wait(0.5)
@@ -603,7 +541,6 @@ end)
 
 -- =========================================================
 -- CONFIG SYSTEM
--- =========================================================
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
@@ -622,8 +559,8 @@ Fluent:Notify({
 ----------------------
 
 -- =========================
--- MOBILE / PC BUTTON CIRCULAR & DRAGGABLE (LeftControl)
--- =========================
+-- MOBILE / PC BUTTON
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
