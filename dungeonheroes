@@ -441,76 +441,103 @@ Tabs.Raid:AddSlider("TPSpeedSlider", {
 -- =========================================================
 -- Sell
 -- =========================================================
-local Section = Tabs.Sell:AddSection("Sell is Buged")
+
+-- =========================================================
+-- Sell (Toggle Rarities Version - SAFE)
+-- =========================================================
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
-local inventory = player:WaitForChild("PlayerGui"):WaitForChild("Profile"):WaitForChild("Inventory")
-local sellItemEvent = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("ItemSelling"):WaitForChild("SellItem")
+local inventory = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("Profile")
+    :WaitForChild("Inventory")
 
--- Variable globale
-_G.AutoSellEquipment = false
-_G.SelectedRarities = {1,2,3,4,5} -- Raretés par défaut à vendre (1 = Commun, 2 = Uncommun...)
+local sellItemEvent = ReplicatedStorage
+    :WaitForChild("Systems")
+    :WaitForChild("ItemSelling")
+    :WaitForChild("SellItem")
 
--- Liste des raretés pour l'affichage
-local rarityList = {
-    "Commun",    -- 1
-    "Uncommun",  -- 2
-    "Rare",      -- 3
-    "Epic",      -- 4
-    "Legendary", -- 5
-    "Mythic",    -- 6
-    "Primordial"  -- 7
+-- =========================================================
+-- GLOBAL STATE (SAFE FOR SAVE / LOAD)
+-- =========================================================
+
+_G.AutoSellEquipment = _G.AutoSellEquipment or false
+
+-- true = rareté activée
+_G.RarityToggles = _G.RarityToggles or {
+    [1] = true,  -- Commun
+    [2] = true,  -- Uncommun
+    [3] = true,  -- Rare
+    [4] = true,  -- Epic
+    [5] = false,  -- Legendary
+    [6] = false, -- Mythic
+    [7] = false, -- Primordial
 }
 
--- Fonction pour vendre les équipements selon la sélection
-local function sellAllEquipment()
-    while _G.AutoSellEquipment do
-        for _, item in ipairs(inventory:GetChildren()) do
-            if not item.Name:find("PetChest") then
-                local rarityValue = item:FindFirstChild("Rarity")
-                if rarityValue and table.find(_G.SelectedRarities, rarityValue.Value) then
-                    local args = {{item}, {}}
-                    sellItemEvent:FireServer(unpack(args))
-                    task.wait(0.1)
+-- =========================================================
+-- RARITY LIST
+-- =========================================================
+
+local rarityList = {
+    [1] = "Commun",
+    [2] = "Uncommun",
+    [3] = "Rare",
+    [4] = "Epic",
+    [5] = "Legendary",
+    [6] = "Mythic",
+    [7] = "Primordial"
+}
+
+-- =========================================================
+-- AUTO SELL LOOP (THREAD UNIQUE)
+-- =========================================================
+
+task.spawn(function()
+    while true do
+        if _G.AutoSellEquipment then
+            for _, item in ipairs(inventory:GetChildren()) do
+                if not _G.AutoSellEquipment then break end
+
+                -- Ignore PetChest
+                if not item.Name:find("PetChest") then
+                    local rarity = item:FindFirstChild("Rarity")
+                    if rarity and _G.RarityToggles[rarity.Value] then
+                        sellItemEvent:FireServer({item}, {})
+                        task.wait(0.1)
+                    end
                 end
             end
         end
         task.wait(1)
     end
-end
+end)
 
-Tabs.Sell:AddToggle("AutoSellEquipmentToggle", { 
+-- =========================================================
+-- UI
+-- =========================================================
+
+-- Toggle principal
+Tabs.Sell:AddToggle("AutoSellEquipmentToggle", {
     Title = "Auto Sell Equipment",
     Default = _G.AutoSellEquipment,
     Callback = function(state)
         _G.AutoSellEquipment = state
-        if state then
-            task.spawn(sellAllEquipment)
-        end
     end
 })
 
-Tabs.Sell:AddDropdown("RarityDropdown", {
-   Title = "Select Rarities to Sell",
-   Description = "Choose which rarities to sell.",
-   Values = rarityList,
-   Multi = true,
-   Default = {"Commun", "Uncommun", "Rare", "Epic"},
-   Callback = function(selected)
-       local rarities = {}
-       for _, name in ipairs(selected) do
-           for i, n in ipairs(rarityList) do
-               if n == name then
-                   table.insert(rarities, i)
-                   break
-               end
-           end
-       end
-       _G.SelectedRarities = rarities
-   end
-})
+-- Toggles par rareté
+for rarityId, rarityName in ipairs(rarityList) do
+    Tabs.Sell:AddToggle("SellRarity_" .. rarityId, {
+        Title = "Sell " .. rarityName,
+        Default = _G.RarityToggles[rarityId],
+        Callback = function(state)
+            _G.RarityToggles[rarityId] = state
+        end
+    })
+end
 
 
 -- =========================================================
