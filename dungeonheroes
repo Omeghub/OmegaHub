@@ -522,7 +522,44 @@ Tabs.Misc:AddToggle("AutoOpenPetChestsToggle", {
         end
     end
 })
+-- =========================================================
+-- AUTO RE-INJECTIONS AUTOMATIQUE
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
+local AutoReInjectEnabled = false
+local TeleportCheck = false
+
+local queueteleport = queue_on_teleport or 
+                      (syn and syn.queue_on_teleport) or 
+                      (fluxus and fluxus.queue_on_teleport) or
+                      queueonteleport
+
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/Dungeon-heroes"
+
+if queueteleport then
+    LocalPlayer.OnTeleport:Connect(function(State)
+        if AutoReInjectEnabled and not TeleportCheck then
+            TeleportCheck = true
+            local code = "repeat task.wait() until game:IsLoaded() wait(2) loadstring(game:HttpGet('" .. ScriptURL .. "'))()"
+            queueteleport(code)
+        end
+    end)
+end
+
+Tabs.Misc:AddToggle("AutoReInject", {
+    Title = "Auto Re-inject",
+    Description = "Automatically re-inject script after teleporting",
+    Default = false,
+    Callback = function(Value)
+        if not queueteleport then
+            return
+        end
+        
+        AutoReInjectEnabled = Value
+        TeleportCheck = false
+    end
+})
 
 -- =========================================================
 -- RE-START AUTOMATIQUE APRÈS MORT
