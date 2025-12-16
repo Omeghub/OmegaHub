@@ -22,7 +22,7 @@ local Window = Fluent:CreateWindow({
 Fluent:Notify({
    Title = "Notification",
    Content = "Script injected :)",
-   Duration = 5 
+   Duration = 2
 })
 
 local Tabs = {
@@ -585,15 +585,7 @@ SaveManager:IgnoreThemeSettings()
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
-
 Window:SelectTab(1)
-
-Fluent:Notify({
-   Title = "Omega Hub",
-   Content = "Script loaded: KillAura FIXED + TP stable!",
-   Duration = 2
-})
-----------------------
 
 -- =========================
 -- MOBILE / PC BUTTON
