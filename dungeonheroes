@@ -267,18 +267,28 @@ Tabs.Raid:AddToggle("AutoStart", {
 
 _G.AutoReplayDungeon = false
 
-local exitRemote = ReplicatedStorage.Systems.Dungeons.SetExitChoice
-
 local function AutoReplayDungeon()
+    local exitRemote = ReplicatedStorage.Systems.Dungeons.SetExitChoice
+
     while _G.AutoReplayDungeon do
+        local gui = player.PlayerGui:FindFirstChild("DungeonCleared")
 
-        exitRemote:FireServer("NextDifficulty")
+        if gui and gui:FindFirstChild("Frame") and gui.Frame:FindFirstChild("Buttons") then
+            local buttons = gui.Frame.Buttons
 
-        task.wait(1)
+            if buttons:FindFirstChild("NextDifficulty")
+            and buttons.NextDifficulty.Visible then
 
-        exitRemote:FireServer("GoAgain")
+                exitRemote:FireServer("NextDifficulty")
 
-        task.wait(2)
+            elseif buttons:FindFirstChild("RunAgain")
+            and buttons.RunAgain.Visible then
+
+                exitRemote:FireServer("GoAgain")
+            end
+        end
+
+        task.wait(0.3)
     end
 end
 
@@ -286,12 +296,9 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
     Title = "Auto Next or Run Again",
     Callback = function(state)
         _G.AutoReplayDungeon = state
-        if state then
-            task.spawn(AutoReplayDungeon)
-        end
+        if state then task.spawn(AutoReplayDungeon) end
     end
 })
-
 
 -- =========================================================
 --  AUTO FARM
