@@ -28,6 +28,7 @@ Fluent:Notify({
 local Tabs = {
     Main = Window:AddTab({ Title = "Combat", Icon = "swords" }),
     Raid = Window:AddTab({ Title = "Raid / Dungeon", Icon = "sword" }),
+    Items = Window:AddTab({Title = "Items", Icon = "axe" }),
     Sell = Window:AddTab({Title = "Sell", Icon = "layers" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -273,11 +274,11 @@ local function AutoReplayDungeon()
 
         exitRemote:FireServer("NextDifficulty")
 
-        wait(0.1)
+        task.wait(1)
 
         exitRemote:FireServer("GoAgain")
 
-        wait(0.2)
+        task.wait(2)
     end
 end
 
@@ -294,15 +295,20 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
 
 -- =========================================================
 --  AUTO FARM
-
 local tpHeight = 50
 local tpSpeed = 200
 local MAX_DISTANCE = 1000
-local HIGH_HP = 2000000
+local HIGH_HP = 3000000
+
+local oscillationAmplitude = 20
+local oscillationSpeed = 5
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
+local mobsFolder = Workspace:WaitForChild("Mobs")
 
 _G.AutoFarmEnabled = false
-local mobsFolder = Workspace:WaitForChild("Mobs")
-local player = game:GetService("Players").LocalPlayer
 
 local function getNearestMob(hrp)
     local best, dist = nil, MAX_DISTANCE
@@ -318,7 +324,7 @@ local function getNearestMob(hrp)
             local maxHp = mob:GetAttribute("MaxHP") or 1
             if hp > 0 then
                 local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
-                
+
                 if maxHp == HIGH_HP then
                     if d < distHighHP then
                         distHighHP = d
@@ -334,46 +340,66 @@ local function getNearestMob(hrp)
         end
     end
 
-    if bestHighHP then
-        return bestHighHP
-    else
-        return best
-    end
+    return bestHighHP or best
 end
-
-local oscillationAmplitude = 20
-local oscillationSpeed = 5
 
 local function AutoFarm()
     local startTime = tick()
+
     while _G.AutoFarmEnabled do
         local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            local mob = getNearestMob(hrp)
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-            if mob then
-                local timeElapsed = tick() - startTime
-                local oscillation = math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
-
-                local target = mob.HumanoidRootPart.Position + Vector3.new(0, tpHeight, 2 + oscillation)
-                local dir = (target - hrp.Position).Unit
-
-                hrp.Velocity = dir * (tpSpeed / 2)
-                hrp.CFrame = CFrame.new(hrp.Position, mob.HumanoidRootPart.Position)
-
-                for _, v in ipairs(char:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = false end
-                end
-            else
-                hrp.Velocity = Vector3.zero
-            end
+        if not hrp then
+            task.wait()
+            continue
         end
+
+        local mob = getNearestMob(hrp)
+
+        if mob and mob:FindFirstChild("HumanoidRootPart") then
+            local timeElapsed = tick() - startTime
+            local oscillation = math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
+
+            local targetPos = mob.HumanoidRootPart.Position + Vector3.new(0, tpHeight, 2 + oscillation)
+            local dir = (targetPos - hrp.Position)
+
+            if dir.Magnitude > 1 then
+                hrp.Velocity = dir.Unit * (tpSpeed / 2)
+            end
+
+            hrp.CFrame = CFrame.new(hrp.Position, mob.HumanoidRootPart.Position)
+
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+        else
+
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
+            end
+
+            task.wait(0.2)
+        end
+
         task.wait()
     end
 
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.Velocity = Vector3.zero
+    local char = player.Character
+    if char then
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = true
+            end
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.zero
+        end
     end
 end
 
@@ -381,10 +407,12 @@ local Section = Tabs.Raid:AddSection("Auto Farm")
 
 Tabs.Raid:AddToggle("AutoFarmToggle", {
     Title = "Auto TP",
-    Default = _G.AutoFarmEnabled,
+    Default = false,
     Callback = function(state)
         _G.AutoFarmEnabled = state
-        if state then task.spawn(AutoFarm) end
+        if state then
+            task.spawn(AutoFarm)
+        end
     end
 })
 
@@ -393,7 +421,7 @@ Tabs.Raid:AddSlider("TPHeightSlider", {
     Min = 10,
     Max = 150,
     Default = tpHeight,
-    Rounding = 0, -- <-- ajouté
+    Rounding = 0,
     Callback = function(value)
         tpHeight = value
     end
@@ -404,11 +432,12 @@ Tabs.Raid:AddSlider("TPSpeedSlider", {
     Min = 50,
     Max = 500,
     Default = tpSpeed,
-    Rounding = 0, -- <-- ajouté
+    Rounding = 0,
     Callback = function(value)
         tpSpeed = value
     end
 })
+
 -- =========================================================
 -- Items
 
