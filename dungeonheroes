@@ -142,6 +142,8 @@ local PET_ATTACKS = {
     "Claw",
     "Basic Attack",
     "SlamDown",
+    "Stance",
+    "Spear Sweep",
     "Ground Slam", -- krampus
     "soot cloud", -- krampus
     "chain whip", -- krampus
