@@ -427,12 +427,6 @@ local function AutoFarm()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        if isLobby() then
-            resetCharacter(char)
-            task.wait(0.5)
-            continue
-        end
-
         if not hrp then
             task.wait()
             continue
@@ -442,33 +436,51 @@ local function AutoFarm()
 
         if mob and mob:FindFirstChild("HumanoidRootPart") then
             local timeElapsed = tick() - startTime
-            local oscillation =
-                math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
+            local oscillation = math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
-            local targetPos =
-                mob.HumanoidRootPart.Position
-                + Vector3.new(0, tpHeight, 2 + oscillation)
-
-            local dir = targetPos - hrp.Position
+            local targetPos = mob.HumanoidRootPart.Position + Vector3.new(0, tpHeight, 2 + oscillation)
+            local dir = (targetPos - hrp.Position)
 
             if dir.Magnitude > 1 then
                 hrp.Velocity = dir.Unit * (tpSpeed / 2)
             end
 
-            hrp.CFrame = CFrame.new(
-                hrp.Position,
-                mob.HumanoidRootPart.Position
-            )
+            hrp.CFrame = CFrame.new(hrp.Position, mob.HumanoidRootPart.Position)
+
+            -- disable collisions
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
         else
-            resetCharacter(char)
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+
             task.wait(0.2)
         end
 
         task.wait()
     end
 
-    resetCharacter(player.Character)
+    -- final reset when disabled
+    local char = player.Character
+    if char then
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.zero
+        end
+    end
 end
+
 
 local Section = Tabs.Raid:AddSection("Auto Farm")
 
