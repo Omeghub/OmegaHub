@@ -248,7 +248,7 @@ local function AutoStartDungeon()
                 trigger:FireServer()
             end
         end
-        task.wait(0.3)
+        task.wait(1)
     end
 end
 
