@@ -248,7 +248,7 @@ local function AutoStartDungeon()
                 trigger:FireServer()
             end
         end
-        task.wait(1)
+        task.wait(0.3)
     end
 end
 
@@ -263,27 +263,47 @@ Tabs.Raid:AddToggle("AutoStart", {
 })
 
 -- =========================================================
--- AUTO NEXT DIFFICULTY / AUTO RUN AGAIN
+-- AUTO REPLAY DUNGEON
 
 _G.AutoReplayDungeon = false
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
 local exitRemote = ReplicatedStorage.Systems.Dungeons.SetExitChoice
+
+------------------------------------------------------------
 
 local function AutoReplayDungeon()
     while _G.AutoReplayDungeon do
+        local gui = player.PlayerGui:FindFirstChild("DungeonCleared")
 
-        exitRemote:FireServer("NextDifficulty")
+        if gui then
+            local frame = gui:FindFirstChild("Frame")
+            local buttons = frame and frame:FindFirstChild("Buttons")
 
-        task.wait(4)
+            if buttons then
+                local nextDiff = buttons:FindFirstChild("NextDifficulty")
+                local runAgain = buttons:FindFirstChild("RunAgain")
 
-        exitRemote:FireServer("GoAgain")
+                -- priorité au NextDifficulty
+                if nextDiff and nextDiff.Visible then
+                    exitRemote:FireServer("NextDifficulty")
 
-        task.wait(6)
+                elseif runAgain and runAgain.Visible then
+                    exitRemote:FireServer("GoAgain")
+                end
+            end
+        end
+
+        task.wait(0.3)
     end
 end
 
 Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
-    Title = "Auto Next or Run Again",
+    Title = "Auto Next / Run Again",
+    Default = false,
     Callback = function(state)
         _G.AutoReplayDungeon = state
         if state then
@@ -292,9 +312,8 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
     end
 })
 
-
---- =========================================================
--- AUTO FARM 
+-- =========================================================
+--  AUTO FARM
 local tpHeight = 50
 local tpSpeed = 200
 local MAX_DISTANCE = 1000
@@ -308,34 +327,7 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local mobsFolder = Workspace:WaitForChild("Mobs")
 
-local LOBBY_PLACE_IDS = {
-    [94845773826960] = true,
-    [126558459867198] = true,
-    [94761525307396] = true
-}
-
-local function isLobby()
-    return LOBBY_PLACE_IDS[game.PlaceId] == true
-end
-
 _G.AutoFarmEnabled = false
-
-local function resetCharacter(char)
-    if not char then return end
-
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChild("Humanoid")
-
-    if hrp then
-        hrp.Velocity = Vector3.zero
-        hrp.CanCollide = false -- valeur normale
-    end
-
-    if humanoid then
-        humanoid.PlatformStand = false
-        humanoid:ChangeState(Enum.HumanoidStateType.Running)
-    end
-end
 
 local function getNearestMob(hrp)
     local best, dist = nil, MAX_DISTANCE
@@ -357,9 +349,11 @@ local function getNearestMob(hrp)
                         distHighHP = d
                         bestHighHP = mob
                     end
-                elseif d < dist then
-                    dist = d
-                    best = mob
+                else
+                    if d < dist then
+                        dist = d
+                        best = mob
+                    end
                 end
             end
         end
@@ -375,12 +369,6 @@ local function AutoFarm()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        if isLobby() then
-            resetCharacter(char)
-            task.wait(0.5)
-            continue
-        end
-
         if not hrp then
             task.wait()
             continue
@@ -390,32 +378,48 @@ local function AutoFarm()
 
         if mob and mob:FindFirstChild("HumanoidRootPart") then
             local timeElapsed = tick() - startTime
-            local oscillation =
-                math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
+            local oscillation = math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
-            local targetPos =
-                mob.HumanoidRootPart.Position
-                + Vector3.new(0, tpHeight, 2 + oscillation)
-
-            local dir = targetPos - hrp.Position
+            local targetPos = mob.HumanoidRootPart.Position + Vector3.new(0, tpHeight, 2 + oscillation)
+            local dir = (targetPos - hrp.Position)
 
             if dir.Magnitude > 1 then
                 hrp.Velocity = dir.Unit * (tpSpeed / 2)
             end
 
-            hrp.CFrame = CFrame.new(
-                hrp.Position,
-                mob.HumanoidRootPart.Position
-            )
+            hrp.CFrame = CFrame.new(hrp.Position, mob.HumanoidRootPart.Position)
+
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
         else
-            resetCharacter(char)
+
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
+            end
+
             task.wait(0.2)
         end
 
         task.wait()
     end
 
-    resetCharacter(player.Character)
+    local char = player.Character
+    if char then
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = true
+            end
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.zero
+        end
+    end
 end
 
 local Section = Tabs.Raid:AddSection("Auto Farm")
