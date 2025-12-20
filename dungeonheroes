@@ -124,17 +124,34 @@ Tabs.Main:AddSlider("AttackDelaySlider", {
 })
 
 -- =========================================================
--- Kill Auras Pets
+-- PET KILL AURA (CLEAN + MULTI ATTACKS)
 
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local mobsFolder = workspace:WaitForChild("Mobs")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local mobsFolder = Workspace:WaitForChild("Mobs")
 local remotePetAttack = ReplicatedStorage.Systems.Combat.PetDamage
+
+local petAttackDelay = 0.2
+local petKillAuraRange = 250
+
+-- 🔴 LISTE DES ATTAQUES POSSIBLES DU PET
+local PET_ATTACKS = {
+    "Claw",
+    "Basic Attack",
+    "SlamDown",
+    "Ground Slam", -- krampus
+    "soot cloud", -- krampus
+    "chain whip", -- krampus
+    "present throw", -- krampus
+    "dark ember trail" -- krampus
+}
 
 _G.PetKillAuraEnabled = false
 _G.PetKillAuraRunning = false
-local petAttackDelay = 0.2
-local petKillAuraRange = 100
+
 
 local function getPlayerPet()
     for _, pet in ipairs(mobsFolder:GetChildren()) do
@@ -145,12 +162,14 @@ local function getPlayerPet()
     return nil
 end
 
-local function getClosestMobsForPet(hrp)
+local function getClosestMob(hrp)
     local closest, dist = nil, petKillAuraRange
+
     for _, mob in ipairs(mobsFolder:GetChildren()) do
-        if mob:IsA("Model") 
-           and mob:FindFirstChild("HumanoidRootPart") 
-           and mob:GetAttribute("Owner") == nil then
+        if mob:IsA("Model")
+        and mob:FindFirstChild("HumanoidRootPart")
+        and mob:GetAttribute("Owner") == nil then
+
             local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
             if d < dist then
                 dist = d
@@ -158,7 +177,25 @@ local function getClosestMobsForPet(hrp)
             end
         end
     end
+
     return closest
+end
+
+local function getValidAttack(petName)
+    local mobFolder = ReplicatedStorage:FindFirstChild("Mobs")
+    local petFolder = mobFolder and mobFolder:FindFirstChild(petName)
+    local attacks = petFolder and petFolder:FindFirstChild("Attacks")
+
+    if not attacks then return nil end
+
+    for _, attackName in ipairs(PET_ATTACKS) do
+        local attack = attacks:FindFirstChild(attackName)
+        if attack and attack:FindFirstChild("Circle") then
+            return attackName, attack.Circle
+        end
+    end
+
+    return nil
 end
 
 local function PetKillAura()
@@ -168,35 +205,29 @@ local function PetKillAura()
     while _G.PetKillAuraEnabled do
         local pet = getPlayerPet()
         local char = player.Character
-        if not pet or not char or not char:FindFirstChild("HumanoidRootPart") then
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if not pet or not hrp then
             task.wait(0.5)
             continue
         end
 
-        local hrp = char.HumanoidRootPart
-
         local petHRP = pet:FindFirstChild("HumanoidRootPart")
         if petHRP then
-            petHRP.CFrame = hrp.CFrame + Vector3.new(2,0,2)
+            petHRP.CFrame = hrp.CFrame * CFrame.new(2, 0, 2)
         end
 
-        local mob = getClosestMobsForPet(hrp)
-        if mob and mob.Parent then
-            local attackFolder = ReplicatedStorage.Mobs:FindFirstChild(pet.Name)
-            if attackFolder and attackFolder:FindFirstChild("Attacks") then
-                local attackRemote = attackFolder.Attacks:FindFirstChild("Claw")
-                if attackRemote then
-                    local circle = attackRemote:FindFirstChild("Circle")
-                    if circle then
-                        local args = {
-                            pet,
-                            "Claw",
-                            circle,
-                            {mob}
-                        }
-                        remotePetAttack:FireServer(unpack(args))
-                    end
-                end
+        local mob = getClosestMob(hrp)
+        if mob then
+            local attackName, circle = getValidAttack(pet.Name)
+
+            if attackName and circle then
+                remotePetAttack:FireServer(
+                    pet,
+                    attackName,
+                    circle,
+                    { mob }
+                )
             end
         end
 
@@ -229,6 +260,7 @@ Tabs.Main:AddSlider("PetAttackDelay", {
         petAttackDelay = value
     end
 })
+
 
 
 
