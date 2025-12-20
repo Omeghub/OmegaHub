@@ -274,11 +274,11 @@ local function AutoReplayDungeon()
 
         exitRemote:FireServer("NextDifficulty")
 
-        task.wait(2)
+        task.wait(4)
 
         exitRemote:FireServer("GoAgain")
 
-        task.wait(3)
+        task.wait(6)
     end
 end
 
