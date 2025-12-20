@@ -667,6 +667,29 @@ Tabs.Misc:AddToggle("AutoReInject", {
         TeleportCheck = false
     end
 })
+-- =========================================================
+-- Auto Claim Crystals
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local claimCrystals = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("PremiumShop"):WaitForChild("ClaimFreeCrystals")
+
+local autoClaim = false
+
+Tabs.Misc:AddToggle("Auto Claim Crystals", {
+    Title = "Auto Claim Crystals",
+    Callback = function(state)
+        autoClaim = state
+        if autoClaim then
+            spawn(function()
+                while autoClaim do
+                    claimCrystals:FireServer()
+                    wait(1)
+                end
+            end)
+        end
+    end
+})
+
 
 -- =========================================================
 -- RE-START AUTOMATIQUE APRÈS MORT
