@@ -294,8 +294,7 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
 
 
 --- =========================================================
--- AUTO FARM (NO COLLISION BUG)
-
+-- AUTO FARM 
 local tpHeight = 50
 local tpSpeed = 200
 local MAX_DISTANCE = 1000
@@ -309,7 +308,6 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local mobsFolder = Workspace:WaitForChild("Mobs")
 
--- 🔴 PLACE IDs DES LOBBYS
 local LOBBY_PLACE_IDS = {
     [94845773826960] = true,
     [126558459867198] = true,
@@ -321,8 +319,6 @@ local function isLobby()
 end
 
 _G.AutoFarmEnabled = false
-
-------------------------------------------------------------
 
 local function resetCharacter(char)
     if not char then return end
@@ -340,8 +336,6 @@ local function resetCharacter(char)
         humanoid:ChangeState(Enum.HumanoidStateType.Running)
     end
 end
-
-------------------------------------------------------------
 
 local function getNearestMob(hrp)
     local best, dist = nil, MAX_DISTANCE
@@ -374,8 +368,6 @@ local function getNearestMob(hrp)
     return bestHighHP or best
 end
 
-------------------------------------------------------------
-
 local function AutoFarm()
     local startTime = tick()
 
@@ -383,7 +375,6 @@ local function AutoFarm()
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        -- 🚫 LOBBY → NE RIEN TOUCHER
         if isLobby() then
             resetCharacter(char)
             task.wait(0.5)
@@ -426,9 +417,6 @@ local function AutoFarm()
 
     resetCharacter(player.Character)
 end
-
-------------------------------------------------------------
--- UI
 
 local Section = Tabs.Raid:AddSection("Auto Farm")
 
