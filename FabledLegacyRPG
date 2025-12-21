@@ -231,7 +231,7 @@ local queueteleport = queue_on_teleport or
                       (fluxus and fluxus.queue_on_teleport) or
                       queueonteleport
 
-local ScriptURL = "URL Game Script"
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/FabledLegacy"
 
 if queueteleport then
     LocalPlayer.OnTeleport:Connect(function(State)
