@@ -195,7 +195,7 @@ Tabs.Main:AddToggle("AutoStartDungeon", {
 -- AUTO RETRY
 local autoRetry = false
 
-local RetryToggle = Tab:AddToggle("AutoRetry", {
+Tabs.Main:AddToggle("AutoRetry", {
     Title = "Auto Retry",
     Description = "Relance automatiquement le vote",
     Default = false,
