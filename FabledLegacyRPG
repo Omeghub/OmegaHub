@@ -41,7 +41,7 @@ Fluent:Notify({
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
    -- Raid = Window:AddTab({ Title = "Raid", Icon = "sword" }),
-   -- Players = Window:AddTab({Title = "Player", Icon = "layers" }),
+    Stats = Window:AddTab({Title = "Stats", Icon = "layers" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
  }
@@ -84,19 +84,15 @@ local function SetupCharacter(char)
     if NoclipConnection then NoclipConnection:Disconnect() end
     if HeartbeatConnection then HeartbeatConnection:Disconnect() end
 
-    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-    Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-    Humanoid.PlatformStand = true
+    Humanoid.PlatformStand = false
+    Humanoid:ChangeState(Enum.HumanoidStateType.Running)
 
     NoclipConnection = RunService.Stepped:Connect(function()
-        if Character then
-            for _, v in pairs(Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                    v.Velocity = Vector3.zero
-                end
+        if not Character then return end
+
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = not AutoFarm
             end
         end
     end)
@@ -109,10 +105,12 @@ local function SetupCharacter(char)
         if not enemiesFolder then return end
 
         local closest, shortestDist = nil, math.huge
+
         for _, mobModel in pairs(enemiesFolder:GetChildren()) do
             if mobModel:IsA("Model") then
                 local hum = mobModel:FindFirstChildOfClass("Humanoid")
                 local root = GetModelRoot(mobModel)
+
                 if hum and hum.Health > 0 and root then
                     local d = (root.Position - HRP.Position).Magnitude
                     if d < shortestDist then
@@ -131,6 +129,7 @@ local function SetupCharacter(char)
         end
     end)
 end
+
 
 task.spawn(function()
     while task.wait(AttackDelay) do
@@ -164,8 +163,11 @@ Tabs.Main:AddToggle("AutoFarm", {
     Description = "TP mobs + attaque + Q / E",
     Default = false,
     Callback = function(Value)
-        AutoFarm = Value
+    AutoFarm = Value
+    if not Value and HRP then
+        HRP.Velocity = Vector3.zero
     end
+end
 })
 
 -- =========================================================
@@ -215,6 +217,63 @@ Tabs.Main:AddToggle("AutoRetry", {
         end
     end
 })
+
+-- =========================================================
+-- AUTO SKILL SYSTEM (SAFE LOOP)
+-- =========================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AddSkillRemote = ReplicatedStorage:WaitForChild("addSkillPoints")
+
+local SkillDelay = 0.25
+
+local AutoHealth = false
+local AutoSpell = false
+local AutoPhysical = false
+
+Tabs.Stats:AddToggle("AutoPhysical", {
+    Title = "Auto Physical",
+    Default = false,
+    Callback = function(Value)
+        AutoPhysical = Value
+    end
+})
+
+Tabs.Stats:AddToggle("AutoSpell", {
+    Title = "Auto Spell",
+    Default = false,
+    Callback = function(Value)
+        AutoSpell = Value
+    end
+})
+
+Tabs.Stats:AddToggle("AutoHealth", {
+    Title = "Auto Health",
+    Default = false,
+    Callback = function(Value)
+        AutoHealth = Value
+    end
+})
+
+
+
+task.spawn(function()
+    while true do
+        task.wait(SkillDelay)
+
+        if AutoHealth then
+            AddSkillRemote:FireServer("health", 1)
+        end
+
+        if AutoSpell then
+            AddSkillRemote:FireServer("spell", 1)
+        end
+
+        if AutoPhysical then
+            AddSkillRemote:FireServer("physical", 1)
+        end
+    end
+end)
 
 
 
