@@ -217,6 +217,33 @@ Tabs.Main:AddToggle("AutoRetry", {
         end
     end
 })
+-- =========================================================
+-- AUTO SPAWN COMPANION
+-- =========================================================
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SpawnCompanionRemote = ReplicatedStorage:WaitForChild("SpawnCompanion")
+
+local AutoSpawnCompanion = false
+local SpawnDelay = 0.5
+
+Tabs.Main:AddToggle("AutoSpawnCompanion", {
+    Title = "Auto Spawn Companion",
+    Default = false,
+    Callback = function(Value)
+        AutoSpawnCompanion = Value
+    end
+})
+
+task.spawn(function()
+    while true do
+        task.wait(SpawnDelay)
+
+        if AutoSpawnCompanion then
+            SpawnCompanionRemote:FireServer()
+        end
+    end
+end)
 
 -- =========================================================
 -- AUTO SKILL SYSTEM (SAFE LOOP)
