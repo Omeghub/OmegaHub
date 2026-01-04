@@ -140,7 +140,6 @@ Tabs.Main:AddSlider("AttackDelaySlider", {
         attackDelay = value
     end
 })
-
 -- =========================================================
 -- PET KILL AURA (CLEAN + MULTI ATTACKS)
 
@@ -280,11 +279,6 @@ Tabs.Main:AddSlider("PetAttackDelay", {
         petAttackDelay = value
     end
 })
-
-
-
-
-
 -- =========================================================
 -- AUTO START DUNGEON
 
@@ -313,7 +307,6 @@ Tabs.Raid:AddToggle("AutoStart", {
         if state then task.spawn(AutoStartDungeon) end
     end
 })
-
 -- =========================================================
 -- AUTO REPLAY DUNGEON
 
@@ -324,8 +317,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local exitRemote = ReplicatedStorage.Systems.Dungeons.SetExitChoice
-
-------------------------------------------------------------
 
 local function AutoReplayDungeon()
     while _G.AutoReplayDungeon do
@@ -339,7 +330,6 @@ local function AutoReplayDungeon()
                 local nextDiff = buttons:FindFirstChild("NextDifficulty")
                 local runAgain = buttons:FindFirstChild("RunAgain")
 
-                -- priorité au NextDifficulty
                 if nextDiff and nextDiff.Visible then
                     exitRemote:FireServer("NextDifficulty")
 
@@ -363,7 +353,6 @@ Tabs.Raid:AddToggle("AutoReplayDungeonToggle", {
         end
     end
 })
-
 -- =========================================================
 -- AUTO FARM
 
@@ -413,6 +402,29 @@ local function getNearestMob(hrp)
     local best, dist = nil, MAX_DISTANCE
     local bestHighHP, distHighHP = nil, MAX_DISTANCE
 
+    local bestCharybdis, distCharybdis = nil, MAX_DISTANCE
+
+    -- Première passe : chercher Charybdis
+    for _, mob in ipairs(mobsFolder:GetDescendants()) do
+        if mob:IsA("Model")
+        and mob:FindFirstChild("HumanoidRootPart")
+        and mob.Name == "Charybdis"
+        and mob:GetAttribute("HP") and mob:GetAttribute("HP") > 0
+        and mob:GetAttribute("Owner") == nil then
+
+            local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if d < distCharybdis then
+                distCharybdis = d
+                bestCharybdis = mob
+            end
+        end
+    end
+
+    if bestCharybdis then
+        return bestCharybdis
+    end
+
+    -- Deuxième passe : mobs normaux
     for _, mob in ipairs(mobsFolder:GetDescendants()) do
         if mob:IsA("Model")
         and mob:FindFirstChild("HumanoidRootPart")
@@ -439,6 +451,7 @@ local function getNearestMob(hrp)
 
     return bestHighHP or best
 end
+
 
 local function AutoFarm()
     local startTime = tick()
@@ -467,7 +480,6 @@ local function AutoFarm()
 
             hrp.CFrame = CFrame.new(hrp.Position, mob.HumanoidRootPart.Position)
 
-            -- disable collisions
             for _, v in ipairs(char:GetDescendants()) do
                 if v:IsA("BasePart") then
                     v.CanCollide = false
@@ -486,7 +498,6 @@ local function AutoFarm()
         task.wait()
     end
 
-    -- final reset when disabled
     local char = player.Character
     if char then
         for _, v in ipairs(char:GetDescendants()) do
@@ -500,7 +511,6 @@ local function AutoFarm()
         end
     end
 end
-
 
 local Section = Tabs.Raid:AddSection("Auto Farm")
 
@@ -536,8 +546,6 @@ Tabs.Raid:AddSlider("TPSpeedSlider", {
         tpSpeed = value
     end
 })
-
-
 -- =========================================================
 -- Items
 
@@ -625,8 +633,6 @@ for rarityId, rarityName in ipairs(rarityList) do
         end
     })
 end
-
-
 -- =========================================================
 -- Misc
 
@@ -721,8 +727,6 @@ Tabs.Misc:AddToggle("Auto Claim Crystals", {
         end
     end
 })
-
-
 -- =========================================================
 -- RE-START AUTOMATIQUE APRÈS MORT
 
