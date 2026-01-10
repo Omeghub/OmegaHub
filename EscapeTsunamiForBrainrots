@@ -78,7 +78,13 @@ local Connections = {}
 
 local BrainrotNames = {
     "Fragola La La La",
-    "La Vacca Black Hole Goat"
+    "La Vacca Black Hole Goat",
+    "Job Job Job Sahur",
+    "Dug Dug Dug",
+    "Bisonte Giuppitere",
+    "Alessio",
+    "Esok Sekolah",
+    "Caffe Trinity"
 }
 
 local function getHRP()
@@ -257,7 +263,7 @@ local Section = Tabs.Farm:AddSection("Grabe And Place Brainrot")
 
 Tabs.Farm:AddParagraph({
     Title = "Auto Grab",
-    Content = "Auto Grab Fragola La La La and\nLa Vacca Black Hole Goat"
+    Content = "Auto Grab Fragola La La La and\nLa Vacca Black Hole Goat and \n New BrainRot"
 })
 
 Tabs.Farm:AddToggle("AutoGrabBrainrot", {
