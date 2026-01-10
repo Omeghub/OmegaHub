@@ -240,6 +240,8 @@ local function disconnectAll()
     table.clear(Connections)
 end
 
+local Section = Tabs.Grab:AddSection("Auto Grab")
+
 Tabs.Grab:AddDropdown("BrainrotSelector", {
     Title = "Select Brainrots to Grab",
     Values = AllBrainrots,
