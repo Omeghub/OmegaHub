@@ -298,20 +298,28 @@ Tabs.Farm:AddToggle("AutoPlaceBrainrot", {
 
 
 -- =========================================================
--- AUTO COLLECT
+-- AUTO COLLECT (5 MIN COOLDOWN)
+
 local Section = Tabs.Farm:AddSection("Collect")
 
-
 local AutoCollect = false
+local CollectCooldown = 300
+local LastCollectTime = 0
 
 local function autoCollect()
     if not AutoCollect then return end
+
+    if os.clock() - LastCollectTime < CollectCooldown then
+        return
+    end
 
     local base = getMyBase()
     if not base then return end
 
     local slots = base:FindFirstChild("Slots")
     if not slots then return end
+
+    local collected = false
 
     for i = 1, 30 do
         local slot = slots:FindFirstChild("Slot"..i)
@@ -320,23 +328,27 @@ local function autoCollect()
             if collectPart then
                 local gui = collectPart:FindFirstChildOfClass("SurfaceGui")
                 if gui and gui.Enabled then
-                    -- TP sur la part Collect
                     getHRP().CFrame = collectPart.CFrame + Vector3.new(0,3,0)
-                    print("[INFO] TP sur Collect de Slot"..i)
-                    task.wait(0.3)
+                    print("[COLLECT] TP Slot"..i)
+                    task.wait(0.4)
+                    collected = true
                 end
             end
         end
     end
+
+    if collected then
+        LastCollectTime = os.clock()
+        print("[COLLECT] Cycle terminé, prochain dans 5 minutes")
+    end
 end
 
 Tabs.Farm:AddToggle("AutoCollect", {
-    Title = "Auto Collect",
+    Title = "Auto Collect (5 min)",
     Default = false,
     Callback = function(v)
         AutoCollect = v
         if v then
-            print("[INFO] AutoCollect activé")
             task.spawn(function()
                 while AutoCollect do
                     autoCollect()
@@ -344,7 +356,50 @@ Tabs.Farm:AddToggle("AutoCollect", {
                 end
             end)
         else
-            print("[INFO] AutoCollect désactivé")
+        end
+    end
+})
+
+-- =========================================================
+-- ANTI AFK (SAFE)
+
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+
+local LocalPlayer = Players.LocalPlayer
+
+local AntiAFK = false
+local AntiAFKConnection = nil
+
+local function enableAntiAFK()
+    if AntiAFKConnection then return end
+
+    AntiAFKConnection = LocalPlayer.Idled:Connect(function()
+        if AntiAFK then
+            VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            task.wait(0.1)
+            VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            print("[ANTI-AFK] Action simulée")
+        end
+    end)
+end
+
+local function disableAntiAFK()
+    if AntiAFKConnection then
+        AntiAFKConnection:Disconnect()
+        AntiAFKConnection = nil
+    end
+end
+
+Tabs.Players:AddToggle("AntiAFK", {
+    Title = "Anti AFK",
+    Default = false,
+    Callback = function(v)
+        AntiAFK = v
+        if v then
+            enableAntiAFK()
+        else
+            disableAntiAFK()
         end
     end
 })
