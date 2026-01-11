@@ -1,3 +1,51 @@
+local function LoadModule(url)
+    local module
+    repeat
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success then
+            module = result
+        else
+            warn("Module non chargé, retry dans 1s : "..url)
+            wait(1)
+        end
+    until module
+    return module
+end
+
+local player = game.Players.LocalPlayer
+repeat wait() until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+--
+if getgenv().ReinjectLoaded then return end
+getgenv().ReinjectLoaded = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/EscapeTsunamiForBrainrots"
+
+local queue = queue_on_teleport 
+           or (syn and syn.queue_on_teleport) 
+           or (fluxus and fluxus.queue_on_teleport) 
+           or queueonteleport
+
+if not queue then
+    return
+end
+
+local TeleportQueued = false
+
+LocalPlayer.OnTeleport:Connect(function()
+    if TeleportQueued then return end
+    TeleportQueued = true
+
+    queue([[
+        repeat task.wait() until game:IsLoaded()
+        task.wait(2)
+        loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
+    ]])
+end)
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 -- =========================================================
@@ -98,7 +146,6 @@ local function getMyBase()
     for i = 1, 5 do
         local base = BasesFolder:FindFirstChild("Base"..i)
         if base and base:GetAttribute("Holder") == UserId then
-            print("[BASE] Trouvée :", base.Name)
             return base
         end
     end
@@ -144,14 +191,11 @@ local function tpToBase()
 
     local cf = getModelCFrame(base)
     getHRP().CFrame = cf + Vector3.new(0,3,0)
-    print("[TP] Retour base")
 end
 
 local function handleBrainrot(model)
     if not AutoGrab then return end
     if not isBrainrotSelected(model.Name) then return end
-
-    print("[GRAB] Détecté :", model.Name)
 
     local cf = getModelCFrame(model)
     if not cf then
@@ -165,7 +209,6 @@ local function handleBrainrot(model)
     local prompt = getPrompt(model)
     if prompt then
         fireproximityprompt(prompt)
-        print("[GRAB] Pris :", model.Name)
     else
         warn("[WARN] Pas de ProximityPrompt :", model.Name)
     end
@@ -202,7 +245,6 @@ local function autoPlaceBrainrot()
                     getHRP().CFrame = cf + Vector3.new(0,3,0)
                     task.wait(0.3)
                     fireproximityprompt(prompt)
-                    print("[PLACE] Brainrot placé Slot"..i)
                     break
                 end
             end
@@ -259,7 +301,6 @@ Tabs.Grab:AddDropdown("BrainrotSelector", {
         end
 
         for name in pairs(SelectedBrainrots) do
-            print("  -", name)
         end
     end
 })
@@ -329,7 +370,6 @@ local function autoCollect()
                 local gui = collectPart:FindFirstChildOfClass("SurfaceGui")
                 if gui and gui.Enabled then
                     getHRP().CFrame = collectPart.CFrame + Vector3.new(0,3,0)
-                    print("[COLLECT] TP Slot"..i)
                     task.wait(0.4)
                     collected = true
                 end
@@ -339,7 +379,6 @@ local function autoCollect()
 
     if collected then
         LastCollectTime = os.clock()
-        print("[COLLECT] Cycle terminé, prochain dans 5 minutes")
     end
 end
 
