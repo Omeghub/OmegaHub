@@ -54,7 +54,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/I
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
 
 local Window = Fluent:CreateWindow({
-   Title = "Gojo Kaisen",
+   Title = "Omega Hub I Kaisen",
    TabWidth = 160,
    Size = UDim2.fromOffset(580, 460),
    Theme = "Dark",
