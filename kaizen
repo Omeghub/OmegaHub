@@ -1,1 +1,730 @@
+local function LoadModule(url)
+    local module
+    repeat
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success then
+            module = result
+        else
+            warn("Module non chargé, retry dans 1s : "..url)
+            wait(1)
+        end
+    until module
+    return module
+end
 
+local player = game.Players.LocalPlayer
+repeat wait() until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+--
+if getgenv().ReinjectLoaded then return end
+getgenv().ReinjectLoaded = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/KaizenRPG"
+
+local queue = queue_on_teleport 
+           or (syn and syn.queue_on_teleport) 
+           or (fluxus and fluxus.queue_on_teleport) 
+           or queueonteleport
+
+if not queue then
+    return
+end
+
+local TeleportQueued = false
+
+LocalPlayer.OnTeleport:Connect(function()
+    if TeleportQueued then return end
+    TeleportQueued = true
+
+    queue([[
+        repeat task.wait() until game:IsLoaded()
+        task.wait(2)
+        loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
+    ]])
+end)
+-- =========================================================
+-- CHARGEMENT DE FLUENT ET INTERFACE
+-- =========================================================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/addons"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
+
+local Window = Fluent:CreateWindow({
+   Title = "Gojo Kaisen",
+   TabWidth = 160,
+   Size = UDim2.fromOffset(580, 460),
+   Theme = "Dark",
+   Acrylic = false,
+   MinimizeKey = Enum.KeyCode.End 
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
+    Raid = Window:AddTab({ Title = "Raid / Boss", Icon = "sword" }),
+    Players = Window:AddTab({Title = "Player", Icon = "layers" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+-- =========================================================
+-- AUTO ATTACK + AUTO SKILLS
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local autoAttack = false
+local autoClick = true
+local selectedSkills = {}
+
+local Section = Tabs.Main:AddSection("Auto Farm")
+
+Tabs.Main:AddToggle("AutoAttack", {
+    Title = "Auto Attack",
+    Default = false,
+    Callback = function(value)
+        autoAttack = value
+
+        if autoAttack then
+            pressWeaponKey()
+        end
+    end
+})
+
+Tabs.Main:AddToggle("AutoClick", {
+    Title = "Auto Click (Mouse)",
+    Default = true,
+    Callback = function(value)
+        autoClick = value
+    end
+})
+
+local SkillDropdown = Tabs.Main:AddDropdown("SkillDropdown", {
+    Title = "Skills",
+    Values = {"Z","X","C","V"},
+    Multi = true,
+    Default = {}
+})
+
+SkillDropdown:OnChanged(function(Value)
+    selectedSkills = Value
+end)
+
+local function pressKey(key)
+
+    VirtualInputManager:SendKeyEvent(true, key, false, game)
+    VirtualInputManager:SendKeyEvent(false, key, false, game)
+
+end
+
+function pressWeaponKey()
+    pressKey(Enum.KeyCode.One)
+end
+
+task.spawn(function()
+
+    while task.wait(0.15) do
+
+        if autoAttack then
+
+            if selectedSkills["Z"] then
+                pressKey(Enum.KeyCode.Z)
+            end
+
+            if selectedSkills["X"] then
+                pressKey(Enum.KeyCode.X)
+            end
+
+            if selectedSkills["C"] then
+                pressKey(Enum.KeyCode.C)
+            end
+
+            if selectedSkills["V"] then
+                pressKey(Enum.KeyCode.V)
+            end
+
+            if autoClick then
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,0)
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,0)
+            end
+
+        end
+
+    end
+
+end)
+
+player.CharacterAdded:Connect(function()
+
+    task.wait(1)
+
+    if autoAttack then
+        pressWeaponKey()
+    end
+
+end)
+-- =========================================================
+-- ENEMY AUTO FARM
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local enemiesFolder = workspace:WaitForChild("Enemies")
+
+local selectedEnemy = nil
+local autoFarm = false
+local distance = 10
+local instantKill = false
+
+local enemyList = {}
+local EnemyDropdown
+
+local function refreshEnemyList()
+
+    table.clear(enemyList)
+
+    for _, enemy in pairs(enemiesFolder:GetChildren()) do
+        local enemyName = enemy:GetAttribute("EnemyName")
+
+        if enemyName and not table.find(enemyList, enemyName) then
+            table.insert(enemyList, enemyName)
+        end
+    end
+
+    if EnemyDropdown then
+        EnemyDropdown:SetValues(enemyList)
+    end
+
+end
+
+local Section = Tabs.Main:AddSection("Auto Tp / Select Enemy")
+
+EnemyDropdown = Tabs.Main:AddDropdown("EnemyDropdown", {
+    Title = "Select Enemy",
+    Values = enemyList,
+    Multi = false,
+    Default = nil,
+    Callback = function(value)
+        selectedEnemy = value
+    end
+})
+
+Tabs.Main:AddButton({
+    Title = "Refresh Enemy List",
+    Callback = function()
+        refreshEnemyList()
+    end
+})
+
+Tabs.Main:AddToggle("AutoFarmEnemy", {
+    Title = "Auto Farm Enemy",
+    Default = false,
+    Callback = function(value)
+        autoFarm = value
+    end
+})
+
+Tabs.Main:AddSlider("EnemyDistance", {
+    Title = "Distance From Enemy",
+    Default = 10,
+    Min = 0,
+    Max = 50,
+    Rounding = 0,
+    Callback = function(value)
+        distance = value
+    end
+})
+
+Tabs.Main:AddToggle("InstantKillEnemy", {
+    Title = "Instant Kill (80% HP)",
+    Default = false,
+    Callback = function(value)
+        instantKill = value
+    end
+})
+
+
+refreshEnemyList()
+
+local attackRemote = game:GetService("ReplicatedStorage"):WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
+
+local blocking = false
+
+task.spawn(function()
+    while task.wait() do
+
+        if autoFarm and selectedEnemy then
+
+            local character = player.Character
+            if not character then continue end
+
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+
+            for _, enemy in pairs(enemiesFolder:GetChildren()) do
+
+                local enemyName = enemy:GetAttribute("EnemyName")
+
+                if enemyName == selectedEnemy then
+
+                    local pivot = enemy:GetPivot()
+                    root.CFrame = pivot * CFrame.new(0,0,distance)
+
+                    if instantKill then
+                        local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                        if humanoid then
+                            if humanoid.Health <= humanoid.MaxHealth * 0.8 then
+                                humanoid.Health = 0
+                            end
+                        end
+                    end
+
+                    local cooldown = enemy:FindFirstChild("combatCooldown")
+
+                    if cooldown then
+
+                        if cooldown.Value and not blocking then
+                            blocking = true
+
+                            attackRemote:FireServer({
+                                buffer = buffer.fromstring("\r\000\000\000General/Block\001\000\000\000\000"),
+                                blobs = {}
+                            })
+                        end
+
+                        if not cooldown.Value and blocking then
+                            blocking = false
+
+                            attackRemote:FireServer({
+                                buffer = buffer.fromstring("\r\000\000\000General/Block\000\000\000\000\000"),
+                                blobs = {}
+                            })
+                        end
+
+                    end
+
+                end
+
+            end
+        end
+    end
+end)
+-- =========================================================
+-- BOSS AUTO FARM (DYNAMIC)
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local bossesFolder = workspace.Enemies:WaitForChild("Bosses")
+
+local selectedBoss = nil
+local autoBoss = false
+local instantKillBoss = false
+local blocking = false
+
+local bossList = {}
+local BossDropdown
+
+local attackRemote = game:GetService("ReplicatedStorage"):WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
+
+local function refreshBossList()
+
+    table.clear(bossList)
+
+    for _, boss in pairs(bossesFolder:GetChildren()) do
+        local bossName = boss:GetAttribute("EnemyName")
+
+        if bossName and not table.find(bossList, bossName) then
+            table.insert(bossList, bossName)
+        end
+    end
+
+    if BossDropdown then
+        BossDropdown:SetValues(bossList)
+    end
+
+end
+
+local Section = Tabs.Raid:AddSection("Auto Tp / Select Boss")
+
+BossDropdown = Tabs.Raid:AddDropdown("BossDropdown", {
+    Title = "Select Boss",
+    Values = bossList,
+    Multi = false,
+    Default = nil,
+    Callback = function(value)
+        selectedBoss = value
+    end
+})
+
+Tabs.Raid:AddToggle("AutoFarmBoss", {
+    Title = "Auto Farm Boss",
+    Default = false,
+    Callback = function(value)
+        autoBoss = value
+    end
+})
+
+Tabs.Raid:AddToggle("InstantKillBoss", {
+    Title = "Instant Kill Boss (After 10% Damage)",
+    Default = false,
+    Callback = function(value)
+        instantKillBoss = value
+    end
+})
+
+bossesFolder.ChildAdded:Connect(function()
+    refreshBossList()
+end)
+
+bossesFolder.ChildRemoved:Connect(function()
+    refreshBossList()
+end)
+
+refreshBossList()
+
+task.spawn(function()
+    while task.wait() do
+
+        if autoBoss and selectedBoss then
+
+            local character = player.Character
+            if not character then continue end
+
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+
+            for _, boss in pairs(bossesFolder:GetChildren()) do
+
+                local bossName = boss:GetAttribute("EnemyName")
+
+                if bossName == selectedBoss then
+
+                    local pivot = boss:GetPivot()
+                    root.CFrame = pivot * CFrame.new(0,0,distance)
+
+                    if instantKillBoss then
+
+                        local humanoid = boss:FindFirstChildOfClass("Humanoid")
+
+                        if humanoid then
+
+                            local maxHP = humanoid.MaxHealth
+                            local currentHP = humanoid.Health
+
+                            if currentHP <= maxHP * 0.9 then
+                                humanoid.Health = 0
+                            end
+
+                        end
+                    end
+
+                    local cooldown = boss:FindFirstChild("combatCooldown")
+
+                    if cooldown then
+
+                        if cooldown.Value and not blocking then
+                            blocking = true
+
+                            attackRemote:FireServer({
+                                buffer = buffer.fromstring("\r\000\000\000General/Block\001\000\000\000\000"),
+                                blobs = {}
+                            })
+                        end
+
+                        if not cooldown.Value and blocking then
+                            blocking = false
+
+                            attackRemote:FireServer({
+                                buffer = buffer.fromstring("\r\000\000\000General/Block\000\000\000\000\000"),
+                                blobs = {}
+                            })
+                        end
+
+                    end
+
+                end
+
+            end
+        end
+    end
+end)
+-- =========================================================
+-- AUTO BLOCK (NEAR ENEMIES)
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local enemiesFolder = workspace:WaitForChild("Enemies")
+
+local autoBlock = false
+local blockDistance = 10
+local blocking = false
+
+local attackRemote = game:GetService("ReplicatedStorage"):WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
+
+local Section = Tabs.Players:AddSection(" PVP ")
+
+Tabs.Players:AddToggle("AutoBlock", {
+    Title = "Auto Block Near Enemies",
+    Default = false,
+    Callback = function(v)
+        autoBlock = v
+    end
+})
+
+RunService.Heartbeat:Connect(function()
+
+    if not autoBlock then return end
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, enemy in pairs(enemiesFolder:GetChildren()) do
+
+        local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+        local cooldown = enemy:FindFirstChild("combatCooldown")
+
+        if enemyRoot and cooldown then
+
+            local dist = (enemyRoot.Position - root.Position).Magnitude
+
+            if dist <= blockDistance then
+
+                if cooldown.Value and not blocking then
+
+                    blocking = true
+
+                    attackRemote:FireServer({
+                        buffer = buffer.fromstring("\r\000\000\000General/Block\001\000\000\000\000"),
+                        blobs = {}
+                    })
+
+                end
+
+                if not cooldown.Value and blocking then
+
+                    blocking = false
+
+                    attackRemote:FireServer({
+                        buffer = buffer.fromstring("\r\000\000\000General/Block\000\000\000\000\000"),
+                        blobs = {}
+                    })
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO STATS
+local statsRemote = game:GetService("ReplicatedStorage"):WaitForChild("Source"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Nodeware"):WaitForChild("Utilities"):WaitForChild("RE//Nodeware/PacketsSync")
+
+local autoMelee = false
+local autoDefense = false
+local autoStamina = false
+local autoWeapon = false
+local autoCursedEnergy = false
+
+local Section = Tabs.Players:AddSection("Auto Stats")
+
+Tabs.Players:AddToggle("AutoMelee", {
+    Title = "Auto Melee",
+    Default = false,
+    Callback = function(v)
+        autoMelee = v
+    end
+})
+
+Tabs.Players:AddToggle("AutoDefense", {
+    Title = "Auto Defense",
+    Default = false,
+    Callback = function(v)
+        autoDefense = v
+    end
+})
+
+Tabs.Players:AddToggle("AutoStamina", {
+    Title = "Auto Stamina",
+    Default = false,
+    Callback = function(v)
+        autoStamina = v
+    end
+})
+
+Tabs.Players:AddToggle("AutoWeapon", {
+    Title = "Auto Weapon",
+    Default = false,
+    Callback = function(v)
+        autoWeapon = v
+    end
+})
+
+Tabs.Players:AddToggle("AutoCursedEnergy", {
+    Title = "Auto Cursed Energy",
+    Default = false,
+    Callback = function(v)
+        autoCursedEnergy = v
+    end
+})
+
+task.spawn(function()
+
+    while task.wait() do
+
+        if autoMelee then
+            statsRemote:FireServer(buffer.fromstring(";\000\001\000\000\000\005\000Melee"))
+        end
+
+        if autoDefense then
+            statsRemote:FireServer(buffer.fromstring(";\000\001\000\000\000\a\000Defense"))
+        end
+
+        if autoStamina then
+            statsRemote:FireServer(buffer.fromstring(";\000\001\000\000\000\a\000Stamina"))
+        end
+
+        if autoWeapon then
+            statsRemote:FireServer(buffer.fromstring(";\000\001\000\000\000\006\000Weapon"))
+        end
+
+        if autoCursedEnergy then
+            statsRemote:FireServer(buffer.fromstring(";\000\001\000\000\000\f\000CursedEnergy"))
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO TP CHEST FAST
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local effects = workspace:WaitForChild("Effects")
+
+local autoChest = false
+local lastTP = 0
+local chestIndex = 1
+
+local Section = Tabs.Misc:AddSection("Auto Tp Loots")
+
+Tabs.Misc:AddToggle("AutoChest", {
+    Title = "Auto TP Chest",
+    Default = false,
+    Callback = function(value)
+        autoChest = value
+    end
+})
+
+RunService.Heartbeat:Connect(function()
+
+    if not autoChest then return end
+    if tick() - lastTP < 1 then return end
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local chests = {}
+
+    for _, obj in ipairs(effects:GetDescendants()) do
+        if obj:IsA("Model") and string.find(obj.Name, "Chest") then
+            table.insert(chests, obj)
+        end
+    end
+
+    if #chests == 0 then return end
+
+    if chestIndex > #chests then
+        chestIndex = 1
+    end
+
+    local chest = chests[chestIndex]
+    local part = chest:FindFirstChildWhichIsA("BasePart")
+
+    if part then
+        character:PivotTo(part.CFrame)
+        chestIndex += 1
+        lastTP = tick()
+    end
+
+end)
+-- =========================================================
+-- AUTO COLLECT COLLECTIBLES
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local collectibles = workspace:WaitForChild("Collectibles")
+
+local autoCollect = false
+local collected = {}
+
+Tabs.Misc:AddToggle("AutoCollect", {
+    Title = "Auto Collect Collectibles",
+    Default = false,
+    Callback = function(value)
+        autoCollect = value
+    end
+})
+
+RunService.Heartbeat:Connect(function()
+
+    if not autoCollect then return end
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, model in ipairs(collectibles:GetChildren()) do
+        
+        if model:IsA("Model") and not collected[model] then
+            
+            local primary = model:FindFirstChild("Primary")
+            
+            if primary then
+                
+                local prompt = primary:FindFirstChild("ProximityPrompt")
+                
+                if prompt then
+                    
+                    collected[model] = true
+                    
+                    character:PivotTo(primary.CFrame)
+
+                    task.wait(0)
+
+                    fireproximityprompt(prompt)
+                    
+                end
+            end
+        end
+    end
+end)
+-- =========================================================
+-- CONFIGURATION SYSTEM
+-- =========================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+Window:SelectTab(1)
+-------------
