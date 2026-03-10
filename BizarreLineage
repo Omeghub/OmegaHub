@@ -4,7 +4,7 @@ getgenv().ReinjectLoaded = true
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local ScriptURL = "https://raw.githubusercontent.com/Omeghub/OmegaHub/refs/heads/main/BizarreLineage"
+local ScriptURL = "https://raw.githubusercontent.com/Omeghub/OmegaHub/refs/heads/main/BizarreLineages"
 
 local queue = queue_on_teleport 
            or (syn and syn.queue_on_teleport) 
