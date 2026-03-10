@@ -1,22 +1,3 @@
-local function LoadModule(url)
-    local module
-    repeat
-        local success, result = pcall(function()
-            return loadstring(game:HttpGet(url))()
-        end)
-        if success then
-            module = result
-        else
-            warn("Module non chargé, retry dans 1s : "..url)
-            wait(1)
-        end
-    until module
-    return module
-end
-
-local player = game.Players.LocalPlayer
-repeat wait() until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
---
 if getgenv().ReinjectLoaded then return end
 getgenv().ReinjectLoaded = true
 
@@ -54,7 +35,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/I
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
 
 local Window = Fluent:CreateWindow({
-   Title = "Omega Hub I Bizarre Lineage",
+   Title = "Omega Hub I Bizarre Lineage ",
    TabWidth = 160,
    Size = UDim2.fromOffset(580, 460),
    Theme = "Dark",
