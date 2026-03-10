@@ -918,6 +918,42 @@ playerGui.ChildAdded:Connect(function(child)
 
 end)
 -- =========================================================
+-- RAID TP
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local selectedRaid = nil
+
+local raidPositions = {
+    Avdol = Vector3.new(332.058, 876.082, 1021.345),
+    Jotaro = Vector3.new(1075.865, 884.226, 203.035),
+    Kira = Vector3.new(1022.256, 876.009, -653.649),
+    Dio = Vector3.new(2802.692, 950.724, 740.775)
+}
+
+Tabs.Raid:AddDropdown("RaidSelect", {
+    Title = "Select Raid Tp",
+    Values = {"Avdol","Jotaro","Kira","Dio"},
+    Multi = false,
+    Default = nil,
+    Callback = function(value)
+        selectedRaid = value
+
+        local char = player.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local pos = raidPositions[value]
+
+        if pos then
+            root.CFrame = CFrame.new(pos)
+        end
+    end
+})
+-- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
 SaveManager:SetLibrary(Fluent)
