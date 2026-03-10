@@ -854,7 +854,9 @@ task.spawn(function()
 
         for _,mob in pairs(liveFolder:GetChildren()) do
 
-            if mob.Name ~= "Server" and mob.Name ~= player.Name then
+            if mob.Name ~= "Server"
+            and mob.Name ~= player.Name
+            and not game.Players:FindFirstChild(mob.Name) then
 
                 local humanoid = mob:FindFirstChildOfClass("Humanoid")
 
@@ -865,15 +867,10 @@ task.spawn(function()
                     root.CFrame = pivot * CFrame.new(0,0,5)
 
                     break
-
                 end
-
             end
-
         end
-
     end
-
 end)
 
 local function tryRetry(raidcomplete, raid)
