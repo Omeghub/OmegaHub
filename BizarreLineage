@@ -1,1 +1,949 @@
+local function LoadModule(url)
+    local module
+    repeat
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success then
+            module = result
+        else
+            warn("Module non chargé, retry dans 1s : "..url)
+            wait(1)
+        end
+    until module
+    return module
+end
 
+local player = game.Players.LocalPlayer
+repeat wait() until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+--
+if getgenv().ReinjectLoaded then return end
+getgenv().ReinjectLoaded = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScriptURL = "https://raw.githubusercontent.com/Omeghub/OmegaHub/refs/heads/main/BizarreLineage"
+
+local queue = queue_on_teleport 
+           or (syn and syn.queue_on_teleport) 
+           or (fluxus and fluxus.queue_on_teleport) 
+           or queueonteleport
+
+if not queue then
+    return
+end
+
+local TeleportQueued = false
+
+LocalPlayer.OnTeleport:Connect(function()
+    if TeleportQueued then return end
+    TeleportQueued = true
+
+    queue([[
+        repeat task.wait() until game:IsLoaded()
+        task.wait(2)
+        loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
+    ]])
+end)
+-- =========================================================
+-- CHARGEMENT DE FLUENT ET INTERFACE
+-- =========================================================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/addons"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
+
+local Window = Fluent:CreateWindow({
+   Title = "Omega Hub I Bizarre Lineage ",
+   TabWidth = 160,
+   Size = UDim2.fromOffset(580, 460),
+   Theme = "Dark",
+   Acrylic = false,
+   MinimizeKey = Enum.KeyCode.End 
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
+    Raid = Window:AddTab({ Title = "Raid / PVE PVP", Icon = "sword" }),
+    Players = Window:AddTab({Title = "Player", Icon = "layers" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+-- =========================================================
+-- AUTO ATTACK + AUTO STAND
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local autoAttack = false
+local autoStand = false
+
+local Section = Tabs.Main:AddSection("Combat")
+
+local function doAttack()
+
+    local char = player.Character
+    if not char then return end
+
+    local controller = char:FindFirstChild("client_character_controller")
+    if not controller then return end
+
+    local m1 = controller:FindFirstChild("M1")
+    if not m1 then return end
+
+    m1:FireServer(true)
+
+end
+
+local function summonStand()
+
+    local char = player.Character
+    if not char then return end
+
+    local controller = char:FindFirstChild("client_character_controller")
+    if not controller then return end
+
+    local stand = controller:FindFirstChild("SummonStand")
+    if not stand then return end
+
+    stand:FireServer()
+
+end
+
+Tabs.Main:AddToggle("AutoAttack", {
+    Title = "Auto Attack",
+    Default = false,
+    Callback = function(value)
+
+        autoAttack = value
+
+        if autoAttack and autoStand then
+            summonStand()
+        end
+
+    end
+})
+
+Tabs.Main:AddToggle("AutoStand", {
+    Title = "Auto Summon Stand",
+    Default = false,
+    Callback = function(value)
+
+        autoStand = value
+
+        if autoAttack and autoStand then
+            summonStand()
+        end
+
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(0.1) do
+
+        if autoAttack then
+            doAttack()
+        end
+
+    end
+
+end)
+
+player.CharacterAdded:Connect(function()
+
+    task.wait(1)
+
+    if autoAttack and autoStand then
+        summonStand()
+    end
+
+end)
+-- =========================================================
+-- AUTO SKILLS
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local autoSkill = false
+local selectedSkills = {}
+
+local Section = Tabs.Main:AddSection("Auto Skills")
+
+Tabs.Main:AddToggle("AutoSkills",{
+    Title = "Auto Skills",
+    Default = false,
+    Callback = function(v)
+        autoSkill = v
+    end
+})
+
+local SkillDropdown = Tabs.Main:AddDropdown("SkillDropdown",{
+    Title = "Select Skills",
+    Values = {"E","R","Z","X","C"},
+    Multi = true,
+    Default = {}
+})
+
+SkillDropdown:OnChanged(function(v)
+    selectedSkills = v
+end)
+
+
+local function useSkill(skill)
+
+    local char = player.Character
+    if not char then return end
+
+    local controller = char:FindFirstChild("client_character_controller")
+    if not controller then return end
+
+    local remote = controller:FindFirstChild("Skill")
+    if not remote then return end
+
+    remote:FireServer(skill,true)
+
+    task.wait()
+
+    remote:FireServer(skill,false)
+
+end
+
+task.spawn(function()
+
+    while task.wait(0.2) do
+
+        if not autoSkill then continue end
+
+        for skill,_ in pairs(selectedSkills) do
+
+            useSkill(skill)
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO TP MOBS (workspace.Live)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local liveFolder = workspace:WaitForChild("Live")
+
+local selectedMob = nil
+local autoTP = false
+local distance = 10
+
+local mobList = {}
+local MobDropdown
+
+local function refreshMobList()
+
+    table.clear(mobList)
+
+    for _, mob in pairs(liveFolder:GetChildren()) do
+
+        local displayName = mob:GetAttribute("DisplayName")
+
+        if displayName and not table.find(mobList, displayName) then
+            table.insert(mobList, displayName)
+        end
+
+    end
+
+    if MobDropdown then
+        MobDropdown:SetValues(mobList)
+    end
+
+end
+
+local Section = Tabs.Main:AddSection("Auto TP Mobs")
+
+MobDropdown = Tabs.Main:AddDropdown("MobDropdown", {
+    Title = "Select Mob",
+    Values = mobList,
+    Multi = false,
+    Default = nil,
+    Callback = function(value)
+        selectedMob = value
+    end
+})
+
+Tabs.Main:AddButton({
+    Title = "Refresh Mob List",
+    Callback = function()
+        refreshMobList()
+    end
+})
+
+Tabs.Main:AddToggle("AutoTPMob", {
+    Title = "Auto TP Mob",
+    Default = false,
+    Callback = function(value)
+        autoTP = value
+    end
+})
+
+Tabs.Main:AddSlider("MobDistance", {
+    Title = "Distance From Mob",
+    Default = 10,
+    Min = 3,
+    Max = 30,
+    Rounding = 0,
+    Callback = function(value)
+        distance = value
+    end
+})
+
+refreshMobList()
+
+task.spawn(function()
+
+    while task.wait() do
+
+        if autoTP and selectedMob then
+
+            local character = player.Character
+            if not character then continue end
+
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+
+            for _, mob in pairs(liveFolder:GetChildren()) do
+
+                local displayName = mob:GetAttribute("DisplayName")
+
+                if displayName == selectedMob then
+
+                    local pivot = mob:GetPivot()
+                    root.CFrame = pivot * CFrame.new(0,0,distance)
+
+                end
+
+            end
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO TP PLAYERS (DISPLAY NAME FROM PLAYERS)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local liveFolder = workspace:WaitForChild("Live")
+
+local autoTP = false
+local selectedPlayer = nil
+local distance = 5
+
+local playerList = {}
+local playerMap = {}
+
+local PlayerDropdown
+
+local function refreshPlayerList()
+
+    table.clear(playerList)
+    table.clear(playerMap)
+
+    for _,plr in pairs(Players:GetPlayers()) do
+
+        if plr ~= player then
+
+            local display = plr.DisplayName
+            local username = plr.Name
+
+            table.insert(playerList,display)
+            playerMap[display] = username
+
+        end
+
+    end
+
+    if PlayerDropdown then
+        PlayerDropdown:SetValues(playerList)
+    end
+
+end
+
+local Section = Tabs.Raid:AddSection("Auto TP Players")
+
+PlayerDropdown = Tabs.Raid:AddDropdown("PlayerDropdown",{
+    Title = "Select Player",
+    Values = playerList,
+    Multi = false,
+    Default = nil,
+    Callback = function(v)
+        selectedPlayer = v
+    end
+})
+
+Tabs.Raid:AddButton({
+    Title = "Refresh Player List",
+    Callback = function()
+        refreshPlayerList()
+    end
+})
+
+Tabs.Raid:AddToggle("AutoTPPlayer",{
+    Title = "Auto TP Player",
+    Default = false,
+    Callback = function(v)
+        autoTP = v
+    end
+})
+
+Tabs.Raid:AddSlider("PlayerDistance",{
+    Title = "Distance",
+    Default = 5,
+    Min = 0,
+    Max = 20,
+    Rounding = 0,
+    Callback = function(v)
+        distance = v
+    end
+})
+
+refreshPlayerList()
+
+task.spawn(function()
+
+    while task.wait(0.1) do
+
+        if not autoTP then continue end
+        if not selectedPlayer then continue end
+
+        local username = playerMap[selectedPlayer]
+        if not username then continue end
+
+        local myChar = player.Character
+        if not myChar then continue end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        if not myRoot then continue end
+
+        local target = liveFolder:FindFirstChild(username)
+        if not target then continue end
+
+        local root = target:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+        myRoot.CFrame = root.CFrame * CFrame.new(0,0,distance)
+
+    end
+
+end)
+-- =========================================================
+-- AUTO STATS (MULTI DROPDOWN)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local statRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("increase_stat")
+
+local statPoints = player:WaitForChild("PlayerData"):WaitForChild("SlotData"):WaitForChild("StatPoints")
+
+local autoStats = false
+local selectedStats = {}
+
+local Section = Tabs.Players:AddSection("Auto Stats")
+
+local StatsDropdown = Tabs.Players:AddDropdown("StatsDropdown", {
+    Title = "Select Stats",
+    Description = "Choose stats to upgrade",
+    Values = {
+        "Strength",
+        "Defense",
+        "Power",
+        "Weapon",
+        "DestructivePower",
+        "DestructiveEnergy"
+    },
+    Multi = true,
+    Default = {}
+})
+
+Tabs.Players:AddToggle("AutoStats", {
+    Title = "Auto Stats",
+    Default = false,
+    Callback = function(v)
+        autoStats = v
+    end
+})
+
+StatsDropdown:OnChanged(function(Value)
+    selectedStats = Value
+end)
+
+local statMap = {
+    Strength = "StrengthStat",
+    Defense = "DefenseStat",
+    Power = "PowerStat",
+    Weapon = "WeaponStat",
+    DestructivePower = "DestructivePowerStat",
+    DestructiveEnergy = "DestructiveEnergyStat"
+}
+
+local function addStat(stat)
+
+    statRemote:FireServer(stat,1)
+
+end
+
+task.spawn(function()
+
+    while task.wait(0.1) do
+
+        if autoStats and statPoints.Value > 0 then
+
+            for statName,_ in pairs(selectedStats) do
+
+                local stat = statMap[statName]
+
+                if stat then
+                    addStat(stat)
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO QUEST (READ ALL SINGLEOBJECTIVE)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoQuest = false
+
+local npcFolder = workspace:WaitForChild("Npcs")
+local npcCache = ReplicatedStorage:WaitForChild("assets"):WaitForChild("npc_cache")
+local liveFolder = workspace:WaitForChild("Live")
+
+local dialogueRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("dialogue")
+
+local Section = Tabs.Players:AddSection("Auto Quest")
+
+Tabs.Players:AddToggle("AutoQuest",{
+    Title = "Auto Quest",
+    Default = false,
+    Callback = function(v)
+        autoQuest = v
+    end
+})
+
+local function getObjectives()
+
+    local holder = player.PlayerGui.menu.task_holder.holder.newobjective.ScrollingFrame.holder
+
+    local talkNPC
+    local defeatMob
+
+    for _,objective in pairs(holder:GetChildren()) do
+
+        if objective.Name == "singleobjective" then
+
+            local label = objective:FindFirstChild("TextLabel")
+
+            if label then
+
+                local text = label.Text
+
+                if string.find(text,"Talk to:") then
+
+                    talkNPC = text:gsub("Talk to: ","")
+
+
+                end
+
+                if string.find(text,"Defeat") then
+
+                    local mobName = text
+                    mobName = mobName:gsub("Defeat ","")
+                    mobName = mobName:gsub(" 「%d+/%d+」","")
+
+                    defeatMob = mobName
+
+                end
+
+            end
+
+        end
+
+    end
+
+    return talkNPC, defeatMob
+
+end
+
+local function tpToNPC(npcName)
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local npc = npcFolder:FindFirstChild(npcName)
+
+    if npc then
+
+        root.CFrame = npc:GetPivot()
+
+        task.wait(0.5)
+
+        dialogueRemote:FireServer(npc,1)
+
+        return
+    end
+
+    local cache = npcCache:FindFirstChild(npcName)
+
+    if cache then
+
+        root.CFrame = cache:GetPivot()
+
+    end
+
+end
+
+local function tpToMob(mobName)
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _,mob in pairs(liveFolder:GetChildren()) do
+
+        local display = mob:GetAttribute("DisplayName")
+
+        if display then
+
+            if string.find(display:lower(),mobName:lower()) then
+
+                root.CFrame = mob:GetPivot() * CFrame.new(0,0,6)
+
+                return
+
+            end
+
+        end
+
+    end
+
+end
+
+task.spawn(function()
+
+    while task.wait(1) do
+
+        if not autoQuest then continue end
+
+        local npcName, mobName = getObjectives()
+
+        if npcName then
+            tpToNPC(npcName)
+        end
+
+        if mobName then
+            tpToMob(mobName)
+        end
+
+    end
+
+end)
+-- =========================================================
+-- PLAYER SPEED
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local walkSpeed = 16
+
+local Section = Tabs.Misc:AddSection("Player")
+
+Tabs.Misc:AddSlider("WalkSpeed",{
+    Title = "Walk Speed",
+    Default = 16,
+    Min = 16,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(value)
+
+        walkSpeed = value
+
+        local char = workspace.Live:FindFirstChild(player.Name)
+        if char then
+
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+            if humanoid then
+                humanoid.WalkSpeed = walkSpeed
+            end
+
+        end
+
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(0) do
+
+        local char = workspace.Live:FindFirstChild(player.Name)
+
+        if char then
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+            if humanoid then
+                humanoid.WalkSpeed = walkSpeed
+            end
+        end
+
+    end
+
+end)
+
+-- =========================================================
+-- AUTO OPEN CHESTS
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoChest = false
+local selectedChests = {}
+
+local chestRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("use_item")
+
+local Section = Tabs.Misc:AddSection("Auto Chest")
+
+local ChestDropdown = Tabs.Misc:AddDropdown("ChestDropdown",{
+    Title = "Select Chests",
+    Values = {
+        "Common Chest",
+        "Uncommon Chest",
+        "Rare Chest",
+        "Epic Chest",
+        "Legendary Chest"
+    },
+    Multi = true,
+    Default = {}
+})
+
+Tabs.Misc:AddToggle("AutoChest",{
+    Title = "Auto Open Chests",
+    Default = false,
+    Callback = function(v)
+        autoChest = v
+    end
+})
+
+ChestDropdown:OnChanged(function(v)
+    selectedChests = v
+end)
+
+task.spawn(function()
+
+    while task.wait(0) do
+
+        if not autoChest then continue end
+
+        for chest,_ in pairs(selectedChests) do
+
+            chestRemote:FireServer(chest)
+
+        end
+    end
+end)
+-- =========================================================
+-- AUTO OPEN STAND ARROW
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoArrow = false
+
+local useItem = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("use_item")
+
+local Section = Tabs.Misc:AddSection("Auto Items")
+
+Tabs.Misc:AddToggle("AutoStandArrow",{
+    Title = "Auto Open Stand Arrow",
+    Default = false,
+    Callback = function(v)
+        autoArrow = v
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(1) do
+
+        if not autoArrow then continue end
+
+        local args = {
+            "Stand Arrow"
+        }
+
+        useItem:FireServer(unpack(args))
+
+    end
+
+end)
+-- =========================================================
+-- AUTO RAID COMPLETE
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local liveFolder = workspace:WaitForChild("Live")
+
+local spawnRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("spawn")
+
+local retryRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("retryraid")
+
+local autoRaid = false
+
+local Section = Tabs.Raid:AddSection("Raid")
+
+Tabs.Raid:AddToggle("AutoRaid",{
+    Title = "Auto Raid",
+    Default = false,
+    Callback = function(v)
+        autoRaid = v
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(1) do
+
+        if not autoRaid then continue end
+
+        local mainMenu = playerGui:FindFirstChild("Main Menu")
+        if not mainMenu then continue end
+
+        local buttons = mainMenu:FindFirstChild("Buttons")
+        if not buttons then continue end
+
+        local quickPlay = buttons:FindFirstChild("Quick Play")
+        if not quickPlay then continue end
+
+        if mainMenu.Enabled and quickPlay.Visible then
+
+            task.wait(5)
+
+            if autoRaid then
+                spawnRemote:FireServer()
+                mainMenu.Enabled = false
+            end
+
+        end
+
+    end
+
+end)
+
+task.spawn(function()
+
+    while task.wait(0.15) do
+
+        if not autoRaid then continue end
+
+        local char = player.Character
+        if not char then continue end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+        for _,mob in pairs(liveFolder:GetChildren()) do
+
+            if mob.Name ~= "Server" and mob.Name ~= player.Name then
+
+                local humanoid = mob:FindFirstChildOfClass("Humanoid")
+
+                if humanoid then
+
+                    local pivot = mob:GetPivot()
+
+                    root.CFrame = pivot * CFrame.new(0,0,5)
+
+                    break
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+
+local function tryRetry(raidcomplete, raid)
+
+    if autoRaid and raidcomplete.Enabled and raid.Visible then
+
+        retryRemote:FireServer()
+
+    end
+
+end
+
+local function listenRaid(raidcomplete)
+
+    local raid = raidcomplete:WaitForChild("raid")
+
+    tryRetry(raidcomplete, raid)
+
+    raid:GetPropertyChangedSignal("Visible"):Connect(function()
+        tryRetry(raidcomplete, raid)
+    end)
+
+    raidcomplete:GetPropertyChangedSignal("Enabled"):Connect(function()
+        tryRetry(raidcomplete, raid)
+    end)
+
+end
+
+local existing = playerGui:FindFirstChild("raidcomplete")
+
+if existing then
+    listenRaid(existing)
+end
+
+playerGui.ChildAdded:Connect(function(child)
+
+    if child.Name == "raidcomplete" then
+
+        listenRaid(child)
+
+    end
+
+end)
+-- =========================================================
+-- CONFIGURATION SYSTEM
+-- =========================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+Window:SelectTab(1)
+-------------
