@@ -160,7 +160,7 @@ Tabs.Main:AddToggle("AutoSkills",{
 
 local SkillDropdown = Tabs.Main:AddDropdown("SkillDropdown",{
     Title = "Select Skills",
-    Values = {"E","R","Z","X","C"},
+    Values = {"E","R","Z","X","C","V"},
     Multi = true,
     Default = {}
 })
