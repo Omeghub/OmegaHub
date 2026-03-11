@@ -800,12 +800,21 @@ local retryRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("cha
 
 local autoRaid = false
 
+local blockedPlaceId = 14890802310
+
 local Section = Tabs.Raid:AddSection("Raid")
 
 Tabs.Raid:AddToggle("AutoRaid",{
     Title = "Auto Raid",
     Default = false,
     Callback = function(v)
+
+        if game.PlaceId == blockedPlaceId then
+            warn("Auto Raid disabled in this place")
+            autoRaid = false
+            return
+        end
+
         autoRaid = v
     end
 })
@@ -814,6 +823,7 @@ task.spawn(function()
 
     while task.wait(1) do
 
+        if game.PlaceId == blockedPlaceId then continue end
         if not autoRaid then continue end
 
         local mainMenu = playerGui:FindFirstChild("Main Menu")
@@ -841,7 +851,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-
+    
     while task.wait(0.15) do
 
         if not autoRaid then continue end
@@ -854,17 +864,22 @@ task.spawn(function()
 
         for _,mob in pairs(liveFolder:GetChildren()) do
 
-            if mob.Name ~= "Server"
-            and mob.Name ~= player.Name
-            and not game.Players:FindFirstChild(mob.Name) then
+            local displayName = mob:FindFirstChild("DisplayName")
+            local isHostageDisplay = displayName and displayName.Value == "Hostage"
+            local isHostageName = string.find(mob.Name,"Hostage")
 
+            if mob.Name ~= "Server"
+                and mob.Name ~= player.Name
+                and not game.Players:FindFirstChild(mob.Name)
+                and not isHostageDisplay
+                and not isHostageName then
                 local humanoid = mob:FindFirstChildOfClass("Humanoid")
 
                 if humanoid then
 
                     local pivot = mob:GetPivot()
 
-                    root.CFrame = pivot * CFrame.new(0,0,5)
+                        root.CFrame = pivot * CFrame.new(0,0,5)
 
                     break
                 end
