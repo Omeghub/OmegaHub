@@ -644,6 +644,172 @@ task.spawn(function()
 
 end)
 -- =========================================================
+-- Auto Conjuring
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoConjuring = false
+local followingClone = false
+
+local dialogueRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("dialogue")
+
+Tabs.Players:AddSection("Conjuring")
+
+Tabs.Players:AddToggle("AutoConjuring",{
+    Title = "Auto Conjuring",
+    Default = false,
+    Callback = function(v)
+        autoConjuring = v
+    end
+})
+
+local function pauseCombatForPrompt()
+
+    local oldAttack = autoAttack
+    local oldSkill = autoSkill
+
+    autoAttack = false
+    autoSkill = false
+
+    task.wait(0.3)
+
+    return function()
+        autoAttack = oldAttack
+        autoSkill = oldSkill
+    end
+
+end
+
+local function doMeditation(root)
+
+    local meditationFolder = workspace.Map:FindFirstChild("Meditation")
+    if not meditationFolder then return end
+
+    local yogaMat = meditationFolder:FindFirstChild("Yoga Mat")
+    if not yogaMat then return end
+
+    root.CFrame = yogaMat:GetPivot()
+
+    local resumeCombat = pauseCombatForPrompt()
+
+    task.wait(0.5)
+
+    local prompt = yogaMat:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+    if prompt then
+        fireproximityprompt(prompt,3)
+    end
+
+    task.wait(5)
+
+    resumeCombat()
+
+end
+
+
+local function talkToSelf(root)
+
+    local npc = workspace.Npcs:FindFirstChild("The Self")
+    if not npc then return end
+
+    root.CFrame = npc:GetPivot()
+
+    task.wait(0.5)
+
+    local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+    if prompt then
+        fireproximityprompt(prompt)
+        task.wait(0.5)
+    end
+
+    dialogueRemote:FireServer(npc,1)
+
+    task.wait(0.5)
+
+    dialogueRemote:FireServer(npc,"Yes.")
+
+end
+
+local function findClone()
+
+    local playerName = string.lower(player.Name)
+
+    for _,mob in pairs(workspace.Live:GetChildren()) do
+
+        local mobName = string.lower(mob.Name)
+
+        if string.find(mobName,"clone") and string.find(mobName,playerName) then
+
+            local humanoid = mob:FindFirstChildOfClass("Humanoid")
+
+            if humanoid and humanoid.Health > 0 then
+                return mob
+            end
+
+        end
+
+    end
+
+end
+
+local function followClone()
+
+    if followingClone then return end
+    followingClone = true
+
+    task.spawn(function()
+
+        while autoConjuring do
+
+            local char = player.Character
+            if not char then break end
+
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then break end
+
+            local clone = findClone()
+
+            if clone then
+                root.CFrame = clone:GetPivot() * CFrame.new(0,0,5)
+            end
+
+            task.wait(0.05)
+
+        end
+
+        followingClone = false
+
+    end)
+
+end
+
+task.spawn(function()
+
+    while task.wait(0.2) do
+
+        if not autoConjuring then continue end
+
+        local char = player.Character
+        if not char then continue end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+        doMeditation(root)
+
+        talkToSelf(root)
+
+        task.wait(2)
+
+        followClone()
+
+    end
+
+end)
+-- =========================================================
 -- PLAYER SPEED
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -966,145 +1132,6 @@ Tabs.Raid:AddDropdown("RaidSelect", {
     end
 })
 -- =========================================================
--- AUTO CONJURING COMPLETE
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local player = Players.LocalPlayer
-
-local autoConjuring = false
-local followingClone = false
-
-local dialogueRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("dialogue")
-
-local Section = Tabs.Misc:AddSection("Conjuring")
-
-Tabs.Misc:AddToggle("AutoConjuring",{
-    Title = "Auto Conjuring",
-    Default = false,
-    Callback = function(v)
-        autoConjuring = v
-    end
-})
-
-local function followClone()
-
-    if followingClone then return end
-    followingClone = true
-
-    task.spawn(function()
-
-        while autoConjuring do
-
-            local char = player.Character
-            if not char then break end
-
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then break end
-
-            local cloneFound = nil
-            local playerName = string.lower(player.Name)
-
-            for _,mob in pairs(workspace.Live:GetChildren()) do
-
-                local mobName = string.lower(mob.Name)
-
-                if string.find(mobName,"clone") and string.find(mobName,playerName) then
-
-                    local humanoid = mob:FindFirstChildOfClass("Humanoid")
-
-                    if humanoid and humanoid.Health > 0 then
-                        cloneFound = mob
-                        break
-                    end
-
-                end
-
-            end
-
-            if cloneFound then
-                root.CFrame = cloneFound:GetPivot() * CFrame.new(0,0,5)
-            end
-
-            task.wait(0.05)
-
-        end
-
-        followingClone = false
-
-    end)
-
-end
-
-
-task.spawn(function()
-
-    while task.wait(0) do
-
-        if not autoConjuring then continue end
-
-        local char = player.Character
-        if not char then continue end
-
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then continue end
-
-
-        local meditationFolder = workspace.Map:FindFirstChild("Meditation")
-
-        if meditationFolder then
-
-            local yogaMat = meditationFolder:FindFirstChild("Yoga Mat")
-
-            if yogaMat then
-
-                root.CFrame = yogaMat:GetPivot()
-
-                task.wait(0.5)
-
-                local prompt = yogaMat:FindFirstChildWhichIsA("ProximityPrompt",true)
-
-                if prompt then
-                    fireproximityprompt(prompt)
-                    task.wait(1)
-                end
-
-            end
-
-        end
-
-        local npc = workspace.Npcs:FindFirstChild("The Self")
-
-        if npc then
-
-            root.CFrame = npc:GetPivot()
-
-            task.wait(0.5)
-
-            local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt",true)
-
-            if prompt then
-                fireproximityprompt(prompt)
-                task.wait(0.5)
-            end
-
-            dialogueRemote:FireServer(npc,1)
-
-            task.wait(0.5)
-
-            dialogueRemote:FireServer(npc,"Yes.")
-
-        end
-
-        task.wait(2)
-
-        followClone()
-
-    end
-
-end)
--- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
 SaveManager:SetLibrary(Fluent)
@@ -1115,7 +1142,6 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 Window:SelectTab(1)
 -------------
-
 -- =========================
 -- MOBILE / PC BUTTON
 
