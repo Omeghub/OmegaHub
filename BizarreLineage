@@ -966,6 +966,145 @@ Tabs.Raid:AddDropdown("RaidSelect", {
     end
 })
 -- =========================================================
+-- AUTO CONJURING COMPLETE
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoConjuring = false
+local followingClone = false
+
+local dialogueRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("dialogue")
+
+local Section = Tabs.Misc:AddSection("Conjuring")
+
+Tabs.Misc:AddToggle("AutoConjuring",{
+    Title = "Auto Conjuring",
+    Default = false,
+    Callback = function(v)
+        autoConjuring = v
+    end
+})
+
+local function followClone()
+
+    if followingClone then return end
+    followingClone = true
+
+    task.spawn(function()
+
+        while autoConjuring do
+
+            local char = player.Character
+            if not char then break end
+
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then break end
+
+            local cloneFound = nil
+            local playerName = string.lower(player.Name)
+
+            for _,mob in pairs(workspace.Live:GetChildren()) do
+
+                local mobName = string.lower(mob.Name)
+
+                if string.find(mobName,"clone") and string.find(mobName,playerName) then
+
+                    local humanoid = mob:FindFirstChildOfClass("Humanoid")
+
+                    if humanoid and humanoid.Health > 0 then
+                        cloneFound = mob
+                        break
+                    end
+
+                end
+
+            end
+
+            if cloneFound then
+                root.CFrame = cloneFound:GetPivot() * CFrame.new(0,0,5)
+            end
+
+            task.wait(0.05)
+
+        end
+
+        followingClone = false
+
+    end)
+
+end
+
+
+task.spawn(function()
+
+    while task.wait(0) do
+
+        if not autoConjuring then continue end
+
+        local char = player.Character
+        if not char then continue end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+
+        local meditationFolder = workspace.Map:FindFirstChild("Meditation")
+
+        if meditationFolder then
+
+            local yogaMat = meditationFolder:FindFirstChild("Yoga Mat")
+
+            if yogaMat then
+
+                root.CFrame = yogaMat:GetPivot()
+
+                task.wait(0.5)
+
+                local prompt = yogaMat:FindFirstChildWhichIsA("ProximityPrompt",true)
+
+                if prompt then
+                    fireproximityprompt(prompt)
+                    task.wait(1)
+                end
+
+            end
+
+        end
+
+        local npc = workspace.Npcs:FindFirstChild("The Self")
+
+        if npc then
+
+            root.CFrame = npc:GetPivot()
+
+            task.wait(0.5)
+
+            local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt",true)
+
+            if prompt then
+                fireproximityprompt(prompt)
+                task.wait(0.5)
+            end
+
+            dialogueRemote:FireServer(npc,1)
+
+            task.wait(0.5)
+
+            dialogueRemote:FireServer(npc,"Yes.")
+
+        end
+
+        task.wait(2)
+
+        followClone()
+
+    end
+
+end)
+-- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
 SaveManager:SetLibrary(Fluent)
@@ -976,3 +1115,95 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 Window:SelectTab(1)
 -------------
+
+-- =========================
+-- MOBILE / PC BUTTON
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FluentMobileButton"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+local openButton = Instance.new("ImageButton")
+openButton.Size = UDim2.new(0, 40, 0, 40)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+openButton.BackgroundTransparency = 0.5
+openButton.Image = "rbxassetid://133520358863074"
+openButton.ScaleType = Enum.ScaleType.Fit
+openButton.BorderSizePixel = 0
+openButton.Parent = screenGui
+openButton.ZIndex = 10
+
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 20)
+uicorner.Parent = openButton
+
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    openButton.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = openButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+openButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+openButton.MouseButton1Click:Connect(function()
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+end)
+
+local function removeButton()
+    if openButton and openButton.Parent then
+        openButton:Destroy()
+    end
+end
+
+if Window.UI and Window.UI.CloseButton then
+    Window.UI.CloseButton.MouseButton1Click:Connect(function()
+        removeButton()
+    end)
+else
+    if Window.OnClose then
+        local oldClose = Window.OnClose
+        Window.OnClose = function()
+            removeButton()
+            if oldClose then oldClose() end
+        end
+    end
+end
