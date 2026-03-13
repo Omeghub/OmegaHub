@@ -496,8 +496,7 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO QUEST (READ ALL SINGLEOBJECTIVE)
-
+-- AUTO QUEST COMPLETE
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -511,7 +510,7 @@ local liveFolder = workspace:WaitForChild("Live")
 
 local dialogueRemote = ReplicatedStorage:WaitForChild("requests"):WaitForChild("character"):WaitForChild("dialogue")
 
-local Section = Tabs.Players:AddSection("Auto Quest")
+Tabs.Players:AddSection("Auto Quest")
 
 Tabs.Players:AddToggle("AutoQuest",{
     Title = "Auto Quest",
@@ -521,12 +520,13 @@ Tabs.Players:AddToggle("AutoQuest",{
     end
 })
 
-local function getObjectives()
 
-    local holder = player.PlayerGui.menu.task_holder.holder.newobjective.ScrollingFrame.holder
+local function getObjectives()
 
     local talkNPC
     local defeatMob
+
+    local holder = player.PlayerGui.menu.task_holder.holder.newobjective.ScrollingFrame.holder
 
     for _,objective in pairs(holder:GetChildren()) do
 
@@ -534,24 +534,34 @@ local function getObjectives()
 
             local label = objective:FindFirstChild("TextLabel")
 
-            if label then
+            if label and label.Text:find("Talk to:") then
+                talkNPC = label.Text:gsub("Talk to: ","")
+            end
 
-                local text = label.Text
+        end
 
-                if string.find(text,"Talk to:") then
+        if objective.Name == "multiobjective" then
 
-                    talkNPC = text:gsub("Talk to: ","")
+            local textHolder = objective:FindFirstChild("text")
 
+            if textHolder then
 
-                end
+                local label = textHolder:FindFirstChild("TextLabel")
 
-                if string.find(text,"Defeat") then
+                if label then
 
-                    local mobName = text
-                    mobName = mobName:gsub("Defeat ","")
-                    mobName = mobName:gsub(" 「%d+/%d+」","")
+                    local text = label.Text
 
-                    defeatMob = mobName
+                    if text:find("Defeat") then
+
+                        local mobName = text
+                        mobName = mobName:gsub("Defeat ","")
+                        mobName = mobName:gsub("「%d+/%d+」","")
+                        mobName = mobName:match("^%s*(.-)%s*$")
+
+                        defeatMob = mobName
+
+                    end
 
                 end
 
@@ -589,9 +599,7 @@ local function tpToNPC(npcName)
     local cache = npcCache:FindFirstChild(npcName)
 
     if cache then
-
         root.CFrame = cache:GetPivot()
-
     end
 
 end
@@ -604,21 +612,34 @@ local function tpToMob(mobName)
     local root = character:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
+    local closestMob
+    local closestDistance = math.huge
+
     for _,mob in pairs(liveFolder:GetChildren()) do
 
         local display = mob:GetAttribute("DisplayName")
 
-        if display then
+        if display and display:lower():find(mobName:lower()) then
 
-            if string.find(display:lower(),mobName:lower()) then
+            local pos = mob:GetPivot().Position
+            local dist = (pos - root.Position).Magnitude
 
-                root.CFrame = mob:GetPivot() * CFrame.new(0,0,6)
-
-                return
-
+            if dist < closestDistance then
+                closestDistance = dist
+                closestMob = mob
             end
 
         end
+
+    end
+
+    if closestMob then
+
+        local mobCF = closestMob:GetPivot()
+
+        local behindPosition = mobCF.Position - mobCF.LookVector * 5
+
+        root.CFrame = CFrame.lookAt(behindPosition, mobCF.Position)
 
     end
 
@@ -626,7 +647,7 @@ end
 
 task.spawn(function()
 
-    while task.wait(1) do
+    while task.wait(0.4) do
 
         if not autoQuest then continue end
 
