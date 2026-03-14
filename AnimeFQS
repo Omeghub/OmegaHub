@@ -403,7 +403,7 @@ Tabs.Misc:AddSlider("WalkSpeedAFQ",{
 
         walkSpeed = value
 
-        local char = workspace.Live:FindFirstChild(player.Name)
+        local char = workspace.Players:FindFirstChild(player.Name)
         if char then
 
             local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -421,7 +421,7 @@ task.spawn(function()
 
     while task.wait(0) do
 
-        local char = workspace.Live:FindFirstChild(player.Name)
+        local char = workspace.Players:FindFirstChild(player.Name)
 
         if char then
             local humanoid = char:FindFirstChildOfClass("Humanoid")
