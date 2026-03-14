@@ -54,7 +54,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/I
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
 
 local Window = Fluent:CreateWindow({
-   Title = "Omega Hub I Kaisen",
+   Title = "Gojo Kaisen",
    TabWidth = 160,
    Size = UDim2.fromOffset(580, 460),
    Theme = "Dark",
@@ -95,7 +95,7 @@ Tabs.Main:AddToggle("AutoAttack", {
 
 Tabs.Main:AddToggle("AutoClick", {
     Title = "Auto Click (Mouse)",
-    Default = true,
+    Default = false,
     Callback = function(value)
         autoClick = value
     end
@@ -169,13 +169,15 @@ end)
 -- ENEMY AUTO FARM
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local player = Players.LocalPlayer
 local enemiesFolder = workspace:WaitForChild("Enemies")
+local effectsFolder = workspace:WaitForChild("Effects")
 
 local selectedEnemy = nil
 local autoFarm = false
-local distance = 10
+local distance = 5
 local instantKill = false
 
 local enemyList = {}
@@ -199,7 +201,7 @@ local function refreshEnemyList()
 
 end
 
-local Section = Tabs.Main:AddSection("Auto Tp / Select Enemy")
+Tabs.Main:AddSection("Auto Tp / Select Enemy")
 
 EnemyDropdown = Tabs.Main:AddDropdown("EnemyDropdown", {
     Title = "Select Enemy",
@@ -245,15 +247,39 @@ Tabs.Main:AddToggle("InstantKillEnemy", {
     end
 })
 
-
 refreshEnemyList()
 
-local attackRemote = game:GetService("ReplicatedStorage"):WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
+local attackRemote = ReplicatedStorage:WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
 
 local blocking = false
 
+local function checkChest()
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _,obj in pairs(effectsFolder:GetChildren()) do
+
+        if obj.Name == "TestChest" then
+
+            root.CFrame = obj:GetPivot()
+
+            task.wait(1)
+
+        end
+
+    end
+
+end
+
 task.spawn(function()
+
     while task.wait() do
+
+        checkChest()
 
         if autoFarm and selectedEnemy then
 
@@ -270,16 +296,29 @@ task.spawn(function()
                 if enemyName == selectedEnemy then
 
                     local pivot = enemy:GetPivot()
-                    root.CFrame = pivot * CFrame.new(0,0,distance)
+
+                    if not instantKill then
+                        root.CFrame = pivot * CFrame.new(0,0,distance)
+                    end
 
                     if instantKill then
+
                         local humanoid = enemy:FindFirstChildOfClass("Humanoid")
 
                         if humanoid then
+
                             if humanoid.Health <= humanoid.MaxHealth * 0.8 then
+
+                                root.CFrame = pivot
+
+                                task.wait()
+
                                 humanoid.Health = 0
+
                             end
+
                         end
+
                     end
 
                     local cooldown = enemy:FindFirstChild("combatCooldown")
@@ -309,8 +348,11 @@ task.spawn(function()
                 end
 
             end
+
         end
+
     end
+
 end)
 -- =========================================================
 -- BOSS AUTO FARM (DYNAMIC)
@@ -450,6 +492,111 @@ task.spawn(function()
             end
         end
     end
+end)
+-- =========================================================
+-- AUTO RAID
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local enemiesFolder = workspace:WaitForChild("Enemies")
+
+local autoRaid = false
+local blocking = false
+
+local attackRemote = ReplicatedStorage:WaitForChild("@rbxts/wcs:source/networking@GlobalEvents"):WaitForChild("requestSkill")
+
+local Section = Tabs.Raid:AddSection("Auto Raid Tp")
+
+Tabs.Raid:AddToggle("AutoRaidKaizen", {
+    Title = "Auto Raid",
+    Default = false,
+    Callback = function(value)
+        autoRaid = value
+    end
+})
+
+local function getClosestEnemy()
+
+    local character = player.Character
+    if not character then return end
+
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local closest
+    local closestDistance = math.huge
+
+    for _,enemy in pairs(enemiesFolder:GetChildren()) do
+
+        if enemy:IsA("Model") and enemy.Name ~= "RigTemplate" then
+
+            local pivot = enemy:GetPivot()
+            local dist = (pivot.Position - root.Position).Magnitude
+
+            if dist < closestDistance then
+                closestDistance = dist
+                closest = enemy
+            end
+
+        end
+
+    end
+
+    return closest
+
+end
+
+
+task.spawn(function()
+
+    while task.wait(0.2) do
+
+        if not autoRaid then continue end
+
+        local character = player.Character
+        if not character then continue end
+
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+
+        local enemy = getClosestEnemy()
+
+        if enemy then
+
+            local mobCF = enemy:GetPivot()
+
+            local behind = mobCF.Position - mobCF.LookVector * 5
+            root.CFrame = CFrame.lookAt(behind, mobCF.Position)
+
+            local cooldown = enemy:FindFirstChild("combatCooldown")
+
+            if cooldown then
+
+                if cooldown.Value and not blocking then
+                    blocking = true
+
+                    attackRemote:FireServer({
+                        buffer = buffer.fromstring("\r\000\000\000General/Block\001\000\000\000\000"),
+                        blobs = {}
+                    })
+                end
+
+                if not cooldown.Value and blocking then
+                    blocking = false
+
+                    attackRemote:FireServer({
+                        buffer = buffer.fromstring("\r\000\000\000General/Block\000\000\000\000\000"),
+                        blobs = {}
+                    })
+                end
+
+            end
+
+        end
+
+    end
+
 end)
 -- =========================================================
 -- AUTO BLOCK (NEAR ENEMIES)
@@ -717,6 +864,57 @@ RunService.Heartbeat:Connect(function()
         end
     end
 end)
+
+-- =========================================================
+-- SERVER HOP
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+local function serverHop()
+
+    local placeId = game.PlaceId
+    local currentJob = game.JobId
+
+    local servers = {}
+
+    local req = game:HttpGet(
+        "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+    )
+
+    local data = HttpService:JSONDecode(req)
+
+    for _,server in pairs(data.data) do
+
+        if server.playing < server.maxPlayers and server.id ~= currentJob then
+            table.insert(servers, server.id)
+        end
+
+    end
+
+    if #servers > 0 then
+
+        local randomServer = servers[math.random(1,#servers)]
+
+        TeleportService:TeleportToPlaceInstance(placeId, randomServer, player)
+
+    else
+        warn("No servers found")
+    end
+
+end
+
+local Section = Tabs.Misc:AddSection("Server")
+
+Tabs.Misc:AddButton({
+    Title = "Server Hop",
+    Description = "Teleport to another server",
+    Callback = function()
+        serverHop()
+    end
+})
 -- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
@@ -819,4 +1017,3 @@ else
         end
     end
 end
-
