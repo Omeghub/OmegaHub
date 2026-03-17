@@ -1,0 +1,978 @@
+if getgenv().ReinjectLoaded then return end
+getgenv().ReinjectLoaded = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/SailorPieces"
+
+local queue = queue_on_teleport 
+           or (syn and syn.queue_on_teleport) 
+           or (fluxus and fluxus.queue_on_teleport) 
+           or queueonteleport
+
+if not queue then
+    return
+end
+
+local TeleportQueued = false
+
+LocalPlayer.OnTeleport:Connect(function()
+    if TeleportQueued then return end
+    TeleportQueued = true
+
+    queue([[
+        repeat task.wait() until game:IsLoaded()
+        task.wait(2)
+        loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
+    ]])
+end)
+-- =========================================================
+-- CHARGEMENT DE FLUENT ET INTERFACE
+-- =========================================================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/addons"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
+
+local Window = Fluent:CreateWindow({
+   Title = "Omega Hub I Sailor Piece ",
+   TabWidth = 160,
+   Size = UDim2.fromOffset(580, 460),
+   Theme = "Dark",
+   Acrylic = false,
+   MinimizeKey = Enum.KeyCode.End 
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
+    Quest = Window:AddTab({ Title = "Quest / Dungeon", Icon = "swords" }),
+ -- Raid = Window:AddTab({ Title = "Raid", Icon = "sword" }),
+    Players = Window:AddTab({Title = "Player", Icon = "layers" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+-- =========================================================
+-- Auto Attack
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+
+local AutoAttack = false
+local SelectedWeapon = "Weapon 1"
+
+local function EquipWeapon()
+    if SelectedWeapon == "Weapon 1" then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+
+    elseif SelectedWeapon == "Weapon 2" then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Two, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Two, false, game)
+
+    elseif SelectedWeapon == "Weapon 3" then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
+    end
+end
+
+Player.CharacterAdded:Connect(function(char)
+    Character = char
+    task.wait(1)
+
+    if AutoAttack then
+        EquipWeapon()
+    end
+end)
+
+local Section = Tabs.Main:AddSection("Combat")
+
+Tabs.Main:AddDropdown("WeaponSelectSailor", {
+    Title = "Select Weapon",
+    Values = {"Weapon 1","Weapon 2","Weapon 3"},
+    Multi = false,
+    Default = 1,
+    Callback = function(Value)
+        SelectedWeapon = Value
+        
+        if AutoAttack then
+            EquipWeapon()
+        end
+    end
+})
+
+Tabs.Main:AddToggle("AutoAttackSailor", {
+    Title = "Auto Attack",
+    Default = false,
+    Callback = function(Value)
+        AutoAttack = Value
+        
+        if AutoAttack then
+            EquipWeapon()
+        end
+    end
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if AutoAttack and Character then
+            ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit"):FireServer()
+        end
+    end
+end)
+-- =========================================================
+-- AUTO SPELL
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local autoSpell = false
+local selectedSpells = {}
+
+local abilityRemote = ReplicatedStorage:WaitForChild("AbilitySystem"):WaitForChild("Remotes"):WaitForChild("RequestAbility")
+
+Tabs.Main:AddSection("Auto Spell")
+
+Tabs.Main:AddDropdown("SelectSpells", {
+    Title = "Select Spells",
+    Values = {"Spell Z","Spell X","Spell C","Spell V","Spell F"},
+    Multi = true,
+    Default = {},
+    Callback = function(values)
+
+        selectedSpells = {}
+
+        for spell,_ in pairs(values) do
+
+            if spell == "Spell Z" then
+                table.insert(selectedSpells,1)
+
+            elseif spell == "Spell X" then
+                table.insert(selectedSpells,2)
+            elseif spell == "Spell C" then
+                table.insert(selectedSpells,3)
+            elseif spell == "Spell V" then
+                table.insert(selectedSpells,4)
+            elseif spell == "Spell F" then
+                table.insert(selectedSpells,5)
+            end
+
+        end
+
+    end
+})
+
+Tabs.Main:AddToggle("AutoSpellToggle", {
+    Title = "Auto Spell",
+    Default = false,
+    Callback = function(value)
+        autoSpell = value
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(0.4) do
+
+        if autoSpell then
+
+            for _,spell in pairs(selectedSpells) do
+
+                abilityRemote:FireServer(spell)
+
+            end
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO TP / AUTO FARM
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local npcFolder = Workspace:WaitForChild("NPCs")
+
+local SelectedMob = nil
+local MobList = {}
+
+local tpHeight = 6
+local autoTP = false
+
+local function RefreshMobs()
+
+    MobList = {}
+    local temp = {}
+
+    for _,mob in pairs(npcFolder:GetChildren()) do
+        
+        local name = mob.Name:gsub("%d+$","")
+
+        if not table.find(temp,name) then
+            table.insert(temp,name)
+        end
+
+    end
+
+    MobList = temp
+
+end
+
+RefreshMobs()
+
+local Section = Tabs.Main:AddSection("Auto Tp")
+
+local MobDropdown = Tabs.Main:AddDropdown("MobSelectSailor", {
+    Title = "Select Mob",
+    Values = MobList,
+    Multi = false,
+    Default = 1,
+    Callback = function(Value)
+        SelectedMob = Value
+    end
+})
+
+Tabs.Main:AddButton({
+    Title = "Refresh Mobs",
+    Callback = function()
+
+        RefreshMobs()
+        MobDropdown:SetValues(MobList)
+
+    end
+})
+
+Tabs.Main:AddToggle("AutoTPMobSailor",{
+    Title = "Auto TP Mob",
+    Default = false,
+    Callback = function(v)
+        autoTP = v
+    end
+})
+
+Tabs.Main:AddSlider("TPHeightSailor",{
+    Title = "TP Height",
+    Min = 3,
+    Max = 20,
+    Default = tpHeight,
+    Rounding = 1,
+    Callback = function(v)
+        tpHeight = v
+    end
+})
+
+local function getTargetMob()
+
+    for _,mob in ipairs(npcFolder:GetChildren()) do
+
+        local name = mob.Name:gsub("%d+$","")
+
+        if name == SelectedMob then
+
+            local hum = mob:FindFirstChildOfClass("Humanoid")
+
+            if hum and hum.Health > 0 then
+                return mob
+            end
+
+        end
+
+    end
+
+end
+
+local function AutoFarm()
+
+    while autoTP do
+
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if not hrp then
+            task.wait()
+            continue
+        end
+
+        local mob = getTargetMob()
+
+        if mob then
+
+            local mobPosition
+
+            local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+
+            if mobHRP then
+                mobPosition = mobHRP.Position
+            else
+                mobPosition = mob:GetPivot().Position
+            end
+
+            local targetPos = mobPosition + Vector3.new(0,tpHeight,0)
+
+            hrp.CFrame =
+                CFrame.lookAt(targetPos, mobPosition)
+                * CFrame.Angles(math.rad(90),0,0)
+
+            for _,v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+
+        end
+
+        task.wait()
+
+    end
+
+end
+
+task.spawn(function()
+
+    while true do
+
+        if autoTP then
+            AutoFarm()
+        end
+
+        task.wait(0.5)
+
+    end
+
+end)
+--========================================================
+-- AUTO QUEST + AUTO FARM
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local autoQuestFarm = false
+local tpHeight = 6
+
+local questRemote = ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("QuestAccept")
+
+Tabs.Quest:AddSection("Auto Quest Farm")
+
+Tabs.Quest:AddToggle("AutoQuestFarmToggle",{
+    Title = "Auto Quest Farm",
+    Default = false,
+    Callback = function(v)
+        autoQuestFarm = v
+    end
+})
+
+local function getPlayerLevel()
+
+    local levelLabel = player.PlayerGui
+        .BasicStatsCurrencyAndButtonsUI
+        .MainFrame
+        .LevelInfo
+        .LevelFrame
+        .AutoSizeHolder
+        .Level
+
+    return tonumber(levelLabel.Text:match("%d+"))
+
+end
+
+local function isQuestActive()
+
+    local questUI = player.PlayerGui:WaitForChild("QuestUI"):WaitForChild("Quest")
+
+    return questUI.Visible
+
+end
+
+local function findQuestForLevel()
+
+    local playerLevel = getPlayerLevel()
+
+    for _,npc in pairs(workspace.ServiceNPCs:GetChildren()) do
+
+        local hrp = npc:FindFirstChild("HumanoidRootPart")
+
+        if hrp then
+
+            local prompt = hrp:FindFirstChild("QuestPrompt")
+
+            if prompt then
+
+                local questText = prompt.ObjectText
+                local min,max = questText:match("Lvl%s*(%d+)%-(%d+)")
+
+                if min and max then
+
+                    min = tonumber(min)
+                    max = tonumber(max)
+
+                    if playerLevel >= min and playerLevel <= max then
+                        return npc
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+end
+
+local function slideToNextQuestNPC()
+
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if not hrp then return end
+
+    local closestNPC
+    local distance = math.huge
+
+    for _,npc in pairs(workspace.ServiceNPCs:GetChildren()) do
+
+        local pos = npc:GetPivot().Position
+        local dist = (pos - hrp.Position).Magnitude
+
+        if dist < distance then
+            distance = dist
+            closestNPC = npc
+        end
+
+    end
+
+    if not closestNPC then return end
+
+    local currentIndex = tonumber(closestNPC.Name:match("%d+"))
+    local nextNPC = workspace.ServiceNPCs:FindFirstChild("QuestNPC"..(currentIndex + 1))
+
+    if not nextNPC then return end
+
+    local targetPos = nextNPC:GetPivot().Position + Vector3.new(0,3,0)
+
+    local speed = 120
+
+    while (hrp.Position - targetPos).Magnitude > 5 do
+
+        local dir = (targetPos - hrp.Position).Unit
+        hrp.Velocity = dir * speed
+
+        task.wait()
+
+    end
+
+    hrp.Velocity = Vector3.zero
+
+end
+
+local function getQuestMob()
+
+    local questTitle = player.PlayerGui
+        .QuestUI
+        .Quest
+        .Quest
+        .Holder
+        .Content
+        .QuestInfo
+        .QuestTitle
+        .QuestTitle
+
+    local text = questTitle.Text
+    local mob = text:match("^(%w+)")
+
+    if text:find("Boss") then
+        mob = mob.."Boss"
+    end
+
+    return mob
+
+end
+
+local function findMob(mobName)
+
+    for _,mob in pairs(workspace.NPCs:GetChildren()) do
+
+        local name = mob.Name:gsub("%d+$","")
+
+        if name:find(mobName) then
+
+            local hum = mob:FindFirstChildOfClass("Humanoid")
+
+            if hum and hum.Health > 0 then
+                return mob
+            end
+
+        end
+
+    end
+
+end
+
+task.spawn(function()
+
+    while task.wait(1) do
+
+        if autoQuestFarm and not isQuestActive() then
+
+            local questNPC = findQuestForLevel()
+
+            if questNPC then
+
+                questRemote:FireServer(questNPC.Name)
+
+            else
+
+                slideToNextQuestNPC()
+
+            end
+
+        end
+
+    end
+
+end)
+
+task.spawn(function()
+
+    while task.wait(0.15) do
+
+        if autoQuestFarm and isQuestActive() then
+
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+            if not hrp then continue end
+
+            local mobName = getQuestMob()
+
+            if mobName then
+
+                local mob = findMob(mobName)
+
+                if mob then
+
+                    local mobPos
+                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+
+                    if mobHRP then
+                        mobPos = mobHRP.Position
+                    else
+                        mobPos = mob:GetPivot().Position
+                    end
+
+                    local targetPos = mobPos + Vector3.new(0,tpHeight,0)
+
+                    hrp.CFrame =
+                        CFrame.lookAt(targetPos, mobPos) *
+                        CFrame.Angles(math.rad(90),0,0)
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+--========================================================
+-- AUTO DUNGEON
+--========================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+local autoCreateDungeon = false
+local autoFarmDungeon = false
+local autoReplayDungeon = false
+
+local selectedDungeon = "CidDungeon"
+local selectedDifficulty = "Easy"
+
+local portalRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RequestDungeonPortal")
+local difficultyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DungeonWaveVote")
+local replayRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DungeonWaveReplayVote")
+
+Tabs.Quest:AddSection("Auto Dungeon")
+
+Tabs.Quest:AddDropdown("DungeonSelect",{
+    Title = "Select Dungeon",
+    Values = {"CidDungeon","RuneDungeon","DoubleDungeon"},
+    Multi = false,
+    Default = nil,
+    Callback = function(v)
+        selectedDungeon = v
+    end
+})
+
+Tabs.Quest:AddDropdown("DungeonDifficulty",{
+    Title = "Select Difficulty",
+    Values = {"Easy","Medium","Hard","Extreme"},
+    Multi = false,
+    Default = nil,
+    Callback = function(v)
+        selectedDifficulty = v
+    end
+})
+
+Tabs.Quest:AddToggle("AutoCreateDungeon",{
+    Title = "Auto Create Dungeon",
+    Default = false,
+    Callback = function(v)
+        autoCreateDungeon = v
+    end
+})
+
+Tabs.Quest:AddToggle("AutoFarmDungeon",{
+    Title = "Auto Farm Dungeon",
+    Default = false,
+    Callback = function(v)
+        autoFarmDungeon = v
+    end
+})
+
+Tabs.Quest:AddToggle("AutoReplayDungeon",{
+    Title = "Auto Replay Dungeon",
+    Default = false,
+    Callback = function(v)
+        autoReplayDungeon = v
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(3) do
+
+        if autoCreateDungeon then
+
+            portalRemote:FireServer(selectedDungeon)
+
+            task.wait(2)
+
+            local dungeonUI = player.PlayerGui:FindFirstChild("DungeonUI")
+
+            if dungeonUI and dungeonUI.ContentFrame.Actions.Visible then
+
+                difficultyRemote:FireServer(selectedDifficulty)
+
+            end
+
+        end
+
+    end
+
+end)
+
+task.spawn(function()
+
+    while task.wait(0.15) do
+
+        if autoFarmDungeon then
+
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+            if not hrp then continue end
+
+            for _, mob in pairs(workspace.NPCs:GetChildren()) do
+
+                local mobPos
+
+                local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+
+                if mobHRP then
+                    mobPos = mobHRP.Position
+                else
+                    mobPos = mob:GetPivot().Position
+                end
+
+                local targetPos = mobPos + Vector3.new(0,6,0)
+
+                hrp.CFrame =
+                    CFrame.lookAt(targetPos, mobPos) *
+                    CFrame.Angles(math.rad(90),0,0)
+
+                task.wait(0.2)
+
+            end
+
+        end
+
+    end
+
+end)
+
+task.spawn(function()
+
+    while task.wait(2) do
+
+        if autoReplayDungeon then
+
+            local replayUI = player.PlayerGui
+                :FindFirstChild("DungeonUINew")
+
+            if replayUI then
+
+                local frame = replayUI:FindFirstChild("ReplayDungeonFrameVisibleOnlyWhenClearingDungeon")
+
+                if frame and frame.Visible then
+
+                    replayRemote:FireServer("sponsor")
+
+                end
+
+            end
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- Auto Stats
+local AutoStats = false
+local SelectedStat = "Melee"
+
+local Section = Tabs.Players:AddSection("Auto Stats")
+
+Tabs.Players:AddDropdown("SelectStatSailor", {
+    Title = "Select Stat",
+    Values = {"Melee","Defense","Sword","Power"},
+    Multi = false,
+    Default = 1,
+    Callback = function(Value)
+        SelectedStat = Value
+    end
+})
+
+Tabs.Players:AddToggle("AutoStatsToggleSailor", {
+    Title = "Auto Stats",
+    Default = false,
+    Callback = function(Value)
+        AutoStats = Value
+        
+        while AutoStats do
+            local args = {
+                SelectedStat,
+                1
+            }
+
+            game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("AllocateStat"):FireServer(unpack(args))
+
+            task.wait(0.2)
+        end
+    end
+})
+--========================================================
+-- AUTO OPEN CHEST
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local autoOpenChest = false
+local selectedChest = nil
+
+local useItemRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UseItem")
+
+Tabs.Players:AddSection("Auto Open Chest")
+
+Tabs.Players:AddDropdown("ChestSelect",{
+    Title = "Select Chest",
+    Values = {
+        "Common Chest",
+        "Rare Chest",
+        "Epic Chest",
+        "Legendary Chest",
+        "Mythical Chest"
+    },
+    Multi = false,
+    Default = nil,
+    Callback = function(v)
+        selectedChest = v
+    end
+})
+
+Tabs.Players:AddToggle("AutoOpenChestToggle",{
+    Title = "Auto Open Chest",
+    Default = false,
+    Callback = function(v)
+        autoOpenChest = v
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(0) do
+
+        if autoOpenChest and selectedChest then
+
+            local args = {
+                "Use",
+                selectedChest,
+                1,
+                false
+            }
+
+            useItemRemote:FireServer(unpack(args))
+
+        end
+
+    end
+
+end)
+-- =========================================================
+-- PLAYER SPEED
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local walkSpeed = 16
+
+local Section = Tabs.Misc:AddSection("Player")
+
+Tabs.Misc:AddSlider("WalkSpeed",{
+    Title = "Walk Speed",
+    Default = 16,
+    Min = 16,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(value)
+
+        walkSpeed = value
+
+        local char = workspace:FindFirstChild(player.Name)
+        if char then
+
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+            if humanoid then
+                humanoid.WalkSpeed = walkSpeed
+            end
+
+        end
+
+    end
+})
+
+task.spawn(function()
+
+    while task.wait(0) do
+
+        local char = workspace:FindFirstChild(player.Name)
+
+        if char then
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+            if humanoid then
+                humanoid.WalkSpeed = walkSpeed
+            end
+        end
+
+    end
+
+end)
+-- =========================================================
+-- CONFIGURATION SYSTEM
+-- =========================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+Window:SelectTab(1)
+-------------
+
+-- =========================
+-- MOBILE / PC BUTTON
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FluentMobileButton"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+local openButton = Instance.new("ImageButton")
+openButton.Size = UDim2.new(0, 40, 0, 40)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+openButton.BackgroundTransparency = 0.5
+openButton.Image = "rbxassetid://133520358863074"
+openButton.ScaleType = Enum.ScaleType.Fit
+openButton.BorderSizePixel = 0
+openButton.Parent = screenGui
+openButton.ZIndex = 10
+
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 20)
+uicorner.Parent = openButton
+
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    openButton.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = openButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+openButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+openButton.MouseButton1Click:Connect(function()
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+end)
+
+local function removeButton()
+    if openButton and openButton.Parent then
+        openButton:Destroy()
+    end
+end
+
+if Window.UI and Window.UI.CloseButton then
+    Window.UI.CloseButton.MouseButton1Click:Connect(function()
+        removeButton()
+    end)
+else
+    if Window.OnClose then
+        local oldClose = Window.OnClose
+        Window.OnClose = function()
+            removeButton()
+            if oldClose then oldClose() end
+        end
+    end
+end
