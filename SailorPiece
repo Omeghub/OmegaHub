@@ -229,7 +229,7 @@ local MobDropdown = Tabs.Main:AddDropdown("MobSelectSailor", {
     Title = "Select Mob",
     Values = MobList,
     Multi = false,
-    Default = 1,
+    Default = nil,
     Callback = function(Value)
         SelectedMob = Value
     end
@@ -240,7 +240,13 @@ Tabs.Main:AddButton({
     Callback = function()
 
         RefreshMobs()
+
         MobDropdown:SetValues(MobList)
+        MobDropdown:SetValue(nil)
+
+        SelectedMob = nil
+
+        print("Mob list refreshed")
 
     end
 })
@@ -580,8 +586,6 @@ task.spawn(function()
 end)
 --========================================================
 -- AUTO DUNGEON
---========================================================
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
