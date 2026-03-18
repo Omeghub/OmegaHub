@@ -27,6 +27,7 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
+
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 -- =========================================================
@@ -351,6 +352,7 @@ task.spawn(function()
 end)
 --========================================================
 -- AUTO QUEST + AUTO FARM
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -387,7 +389,6 @@ end
 local function isQuestActive()
 
     local questUI = player.PlayerGui:WaitForChild("QuestUI"):WaitForChild("Quest")
-
     return questUI.Visible
 
 end
@@ -431,8 +432,9 @@ end
 local function slideToNextQuestNPC()
 
     local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not char then return end
 
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local closestNPC
@@ -440,37 +442,55 @@ local function slideToNextQuestNPC()
 
     for _,npc in pairs(workspace.ServiceNPCs:GetChildren()) do
 
-        local pos = npc:GetPivot().Position
-        local dist = (pos - hrp.Position).Magnitude
+        if npc and npc:IsA("Model") then
 
-        if dist < distance then
-            distance = dist
-            closestNPC = npc
+            local success, pivot = pcall(function()
+                return npc:GetPivot()
+            end)
+
+            if success and pivot then
+                local pos = pivot.Position
+                local dist = (pos - hrp.Position).Magnitude
+
+                if dist < distance then
+                    distance = dist
+                    closestNPC = npc
+                end
+            end
+
         end
-
     end
 
     if not closestNPC then return end
 
     local currentIndex = tonumber(closestNPC.Name:match("%d+"))
-    local nextNPC = workspace.ServiceNPCs:FindFirstChild("QuestNPC"..(currentIndex + 1))
+    if not currentIndex then return end
 
+    local nextNPC = workspace.ServiceNPCs:FindFirstChild("QuestNPC"..(currentIndex + 1))
     if not nextNPC then return end
 
-    local targetPos = nextNPC:GetPivot().Position + Vector3.new(0,3,0)
+    local success, pivot = pcall(function()
+        return nextNPC:GetPivot()
+    end)
 
+    if not success or not pivot then return end
+
+    local targetPos = pivot.Position + Vector3.new(0,3,0)
     local speed = 120
 
-    while (hrp.Position - targetPos).Magnitude > 5 do
+    setNoclip(true)
 
+    while hrp and (hrp.Position - targetPos).Magnitude > 5 do
         local dir = (targetPos - hrp.Position).Unit
         hrp.Velocity = dir * speed
-
         task.wait()
-
     end
 
-    hrp.Velocity = Vector3.zero
+    if hrp then
+        hrp.Velocity = Vector3.zero
+    end
+
+    setNoclip(false)
 
 end
 
@@ -487,13 +507,18 @@ local function getQuestMob()
         .QuestTitle
 
     local text = questTitle.Text
+
+    if text:find("Winter Warden Boss") then
+        return "SnowBoss", true
+    end
+
     local mob = text:match("^(%w+)")
 
     if text:find("Boss") then
         mob = mob.."Boss"
     end
 
-    return mob
+    return mob, false
 
 end
 
@@ -526,13 +551,9 @@ task.spawn(function()
             local questNPC = findQuestForLevel()
 
             if questNPC then
-
                 questRemote:FireServer(questNPC.Name)
-
             else
-
                 slideToNextQuestNPC()
-
             end
 
         end
@@ -549,33 +570,33 @@ task.spawn(function()
 
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
             if not hrp then continue end
 
-            local mobName = getQuestMob()
+            local mobName, isSpecial = getQuestMob()
+            local mob
+            
+            if isSpecial and mobName == "SnowBoss" then
+                mob = workspace.NPCs:FindFirstChild("SnowBoss")
+            else
+                mob = findMob(mobName)
+            end
 
-            if mobName then
+            if mob then
 
-                local mob = findMob(mobName)
+                local mobPos
+                local mobHRP = mob:FindFirstChild("HumanoidRootPart")
 
-                if mob then
-
-                    local mobPos
-                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-
-                    if mobHRP then
-                        mobPos = mobHRP.Position
-                    else
-                        mobPos = mob:GetPivot().Position
-                    end
-
-                    local targetPos = mobPos + Vector3.new(0,tpHeight,0)
-
-                    hrp.CFrame =
-                        CFrame.lookAt(targetPos, mobPos) *
-                        CFrame.Angles(math.rad(90),0,0)
-
+                if mobHRP then
+                    mobPos = mobHRP.Position
+                else
+                    mobPos = mob:GetPivot().Position
                 end
+
+                local targetPos = mobPos + Vector3.new(0,tpHeight,0)
+
+                hrp.CFrame =
+                    CFrame.lookAt(targetPos, mobPos) *
+                    CFrame.Angles(math.rad(90),0,0)
 
             end
 
