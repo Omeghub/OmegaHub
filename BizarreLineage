@@ -205,7 +205,7 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO TP MOBS (workspace.Live)
+-- AUTO TP MOBS (workspace.Live) + POSITION + AUTO SWITCH
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -213,7 +213,8 @@ local liveFolder = workspace:WaitForChild("Live")
 
 local selectedMob = nil
 local autoTP = false
-local distance = 10
+local distance = 6
+local positionMode = "Behind"
 
 local mobList = {}
 local MobDropdown
@@ -238,7 +239,7 @@ local function refreshMobList()
 
 end
 
-local Section = Tabs.Main:AddSection("Auto TP Mobs")
+Tabs.Main:AddSection("Auto TP Mobs")
 
 MobDropdown = Tabs.Main:AddDropdown("MobDropdown", {
     Title = "Select Mob",
@@ -250,11 +251,18 @@ MobDropdown = Tabs.Main:AddDropdown("MobDropdown", {
     end
 })
 
+Tabs.Main:AddDropdown("PositionMode", {
+    Title = "Position Around Mob",
+    Values = {"Behind","Above","Under"},
+    Default = nil,
+    Callback = function(value)
+        positionMode = value
+    end
+})
+
 Tabs.Main:AddButton({
     Title = "Refresh Mob List",
-    Callback = function()
-        refreshMobList()
-    end
+    Callback = refreshMobList
 })
 
 Tabs.Main:AddToggle("AutoTPMob", {
@@ -267,16 +275,36 @@ Tabs.Main:AddToggle("AutoTPMob", {
 
 Tabs.Main:AddSlider("MobDistance", {
     Title = "Distance From Mob",
-    Default = 10,
+    Default = 6,
     Min = 3,
     Max = 30,
-    Rounding = 0,
+    Rounding = 1,
     Callback = function(value)
         distance = value
     end
 })
 
 refreshMobList()
+
+local function getAliveMob()
+
+    for _, mob in pairs(liveFolder:GetChildren()) do
+
+        local displayName = mob:GetAttribute("DisplayName")
+
+        if displayName == selectedMob then
+
+            local hum = mob:FindFirstChildOfClass("Humanoid")
+
+            if hum and hum.Health > 0 then
+                return mob
+            end
+
+        end
+
+    end
+
+end
 
 task.spawn(function()
 
@@ -290,18 +318,34 @@ task.spawn(function()
             local root = character:FindFirstChild("HumanoidRootPart")
             if not root then continue end
 
-            for _, mob in pairs(liveFolder:GetChildren()) do
+            local mob = getAliveMob()
 
-                local displayName = mob:GetAttribute("DisplayName")
+            if mob then
 
-                if displayName == selectedMob then
+                local success, pivot = pcall(function()
+                    return mob:GetPivot()
+                end)
 
-                    local pivot = mob:GetPivot()
-                    root.CFrame = pivot * CFrame.new(0,0,distance)
+                if not success or not pivot then continue end
 
+                local offset
+
+                if positionMode == "Behind" then
+                    offset = CFrame.new(0, 0, distance)
+
+                elseif positionMode == "Above" then
+                    offset = CFrame.new(0, distance, 0)
+
+                elseif positionMode == "Under" then
+                    offset = CFrame.new(0, -distance, 0)
                 end
 
+                local targetPos = (pivot * offset).Position
+
+                root.CFrame = CFrame.lookAt(targetPos, pivot.Position)
+
             end
+
         end
 
     end
@@ -1163,94 +1207,3 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 Window:SelectTab(1)
 -------------
--- =========================
--- MOBILE / PC BUTTON
-
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FluentMobileButton"
-screenGui.Parent = playerGui
-screenGui.ResetOnSpawn = false
-
-local openButton = Instance.new("ImageButton")
-openButton.Size = UDim2.new(0, 40, 0, 40)
-openButton.Position = UDim2.new(0, 10, 0, 10)
-openButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
-openButton.BackgroundTransparency = 0.5
-openButton.Image = "rbxassetid://133520358863074"
-openButton.ScaleType = Enum.ScaleType.Fit
-openButton.BorderSizePixel = 0
-openButton.Parent = screenGui
-openButton.ZIndex = 10
-
-local uicorner = Instance.new("UICorner")
-uicorner.CornerRadius = UDim.new(0, 20)
-uicorner.Parent = openButton
-
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    openButton.Position = UDim2.new(
-        startPos.X.Scale, startPos.X.Offset + delta.X,
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y
-    )
-end
-
-openButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = openButton.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-openButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
-openButton.MouseButton1Click:Connect(function()
-    local VirtualInputManager = game:GetService("VirtualInputManager")
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
-end)
-
-local function removeButton()
-    if openButton and openButton.Parent then
-        openButton:Destroy()
-    end
-end
-
-if Window.UI and Window.UI.CloseButton then
-    Window.UI.CloseButton.MouseButton1Click:Connect(function()
-        removeButton()
-    end)
-else
-    if Window.OnClose then
-        local oldClose = Window.OnClose
-        Window.OnClose = function()
-            removeButton()
-            if oldClose then oldClose() end
-        end
-    end
-end
