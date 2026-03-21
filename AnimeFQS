@@ -46,7 +46,7 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
-    --Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
+    Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
     --Players = Window:AddTab({Title = "Player", Icon = "layers" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -163,7 +163,7 @@ Tabs.Main:AddSection("Auto Spell")
 
 local SpellDropdown = Tabs.Main:AddDropdown("SpellDropdownAFQ", {
     Title = "Select Spells",
-    Values = {"Spell 1","Spell 2","Spell 3"},
+    Values = {"Spell 1","Spell 2","Spell 3","Spell F"},
     Multi = true,
     Default = {}
 })
@@ -190,7 +190,6 @@ local function castSpell(key)
     }
 
     spellRemote:FireServer(unpack(args))
-
 end
 
 task.spawn(function()
@@ -211,6 +210,10 @@ task.spawn(function()
 
             if spell == "Spell 3" then
                 castSpell(Enum.KeyCode.Three)
+            end
+
+            if spell == "Spell F" then
+                castSpell(Enum.KeyCode.F)
             end
 
         end
