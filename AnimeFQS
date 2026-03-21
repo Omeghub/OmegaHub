@@ -230,8 +230,8 @@ local visualsFolder = Workspace:WaitForChild("Visuals")
 local tpHeight = 6
 local tpSpeed = 200
 
-local oscillationAmplitude = 2
-local oscillationSpeed = 5
+local oscillationAmplitude = 0
+local oscillationSpeed = 0
 
 local MAX_DISTANCE = 500
 local autoFarmDungeon = false
