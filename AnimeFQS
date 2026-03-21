@@ -46,9 +46,9 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
-    --Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
+    Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
     --Players = Window:AddTab({Title = "Player", Icon = "layers" }),
-    --Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 -- =========================================================
@@ -127,7 +127,6 @@ local function retryDungeon()
     }
 
     retryRemote:FireServer(unpack(args))
-
 end
 
 task.spawn(function()
@@ -137,13 +136,14 @@ task.spawn(function()
         if not autoRetry then continue end
 
         local endScreen = playerGui:FindFirstChild("EndScreen")
+        local endScreenFail = playerGui:FindFirstChild("EndScreenFail")
 
-        if endScreen and endScreen.Enabled == true then
+        if (endScreen and endScreen.Enabled)
+        or (endScreenFail and endScreenFail.Enabled) then
 
             retryDungeon()
 
-            task.wait(2)
-
+            task.wait(1)
         end
 
     end
