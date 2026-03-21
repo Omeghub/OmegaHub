@@ -45,7 +45,7 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
-    --Raid = Window:AddTab({ Title = "Raid", Icon = "sword" }),
+    Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
     --Players = Window:AddTab({Title = "Player", Icon = "layers" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -219,8 +219,7 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON
-
+-- AUTO FARM DUNGEON + FLY AU-DESSUS
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
@@ -235,10 +234,12 @@ local oscillationAmplitude = 2
 local oscillationSpeed = 5
 
 local MAX_DISTANCE = 500
-
 local autoFarmDungeon = false
 
-local Section = Tabs.Main:AddSection("Auto Tp")
+local FLYING = false
+local BG, BV
+
+Tabs.Main:AddSection("Auto Tp")
 
 Tabs.Main:AddToggle("AutoFarmDungeonAFQ",{
     Title = "Auto Farm Dungeon",
@@ -270,6 +271,29 @@ Tabs.Main:AddSlider("TPSpeedAFQ",{
     end
 })
 
+local function StartFly(hrp)
+    if FLYING then return end
+    FLYING = true
+
+    BG = Instance.new("BodyGyro")
+    BV = Instance.new("BodyVelocity")
+
+    BG.P = 9e4
+    BG.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    BG.CFrame = hrp.CFrame
+    BG.Parent = hrp
+
+    BV.MaxForce = Vector3.new(9e9,9e9,9e9)
+    BV.Velocity = Vector3.new(0,0,0)
+    BV.Parent = hrp
+end
+
+local function StopFly()
+    FLYING = false
+    if BG then BG:Destroy() BG = nil end
+    if BV then BV:Destroy() BV = nil end
+end
+
 local function getNearestMob(hrp)
 
     local best
@@ -292,9 +316,7 @@ local function getNearestMob(hrp)
                 end
 
             end
-
         end
-
     end
 
     return best
@@ -307,12 +329,9 @@ local function checkHeal(root)
         if obj:IsA("Part") and obj.Name == "Heal" then
 
             root.CFrame = obj.CFrame + Vector3.new(0,2,0)
-
             task.wait(1)
-
             return true
         end
-
     end
 
     return false
@@ -340,24 +359,24 @@ local function AutoFarm()
 
         if mob and mob:FindFirstChild("HumanoidRootPart") then
 
+            local mobRoot = mob.HumanoidRootPart
             local timeElapsed = tick() - startTime
 
             local oscillation =
                 math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
             local targetPos =
-                mob.HumanoidRootPart.Position +
-                Vector3.new(0,tpHeight,oscillation)
+                mobRoot.Position + Vector3.new(0,tpHeight,oscillation)
+
+            StartFly(hrp)
 
             local dir = (targetPos - hrp.Position)
 
             if dir.Magnitude > 1 then
-                hrp.Velocity = dir.Unit * (tpSpeed/2)
+                BV.Velocity = dir.Unit * tpSpeed
             end
 
-            hrp.CFrame =
-                CFrame.lookAt(hrp.Position, mob.HumanoidRootPart.Position)
-                * CFrame.Angles(math.rad(90),0,0)
+            BG.CFrame = CFrame.lookAt(hrp.Position, mobRoot.Position)
 
             for _,v in ipairs(char:GetDescendants()) do
                 if v:IsA("BasePart") then
@@ -369,6 +388,8 @@ local function AutoFarm()
 
         task.wait()
     end
+
+    StopFly()
 end
 
 task.spawn(function()
@@ -380,57 +401,6 @@ task.spawn(function()
         end
 
         task.wait(1)
-
-    end
-
-end)
--- =========================================================
--- PLAYER SPEED
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local walkSpeed = 16
-
-local Section = Tabs.Misc:AddSection("Player")
-
-Tabs.Misc:AddSlider("WalkSpeedAFQ",{
-    Title = "Walk Speed",
-    Default = 16,
-    Min = 16,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(value)
-
-        walkSpeed = value
-
-        local char = workspace.Players:FindFirstChild(player.Name)
-        if char then
-
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-            if humanoid then
-                humanoid.WalkSpeed = walkSpeed
-            end
-
-        end
-
-    end
-})
-
-task.spawn(function()
-
-    while task.wait(0) do
-
-        local char = workspace.Players:FindFirstChild(player.Name)
-
-        if char then
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-            if humanoid then
-                humanoid.WalkSpeed = walkSpeed
-            end
-        end
-
     end
 
 end)
