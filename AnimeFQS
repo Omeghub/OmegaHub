@@ -316,9 +316,9 @@ local function checkHeal(root)
 
             task.wait(0.1)
 
-            root.CFrame = obj.CFrame + Vector3.new(0,2,0)
+            root.CFrame = obj.CFrame + Vector3.new(0,0,0)
 
-            task.wait(1)
+            task.wait(0.5)
 
             return true
         end
