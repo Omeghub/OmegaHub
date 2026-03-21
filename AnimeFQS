@@ -27,6 +27,7 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
+
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 -- =========================================================
@@ -219,7 +220,8 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON + FLY AU-DESSUS
+-- AUTO FARM DUNGEON (TP + FLY AU-DESSUS)
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
@@ -228,10 +230,8 @@ local npcFolder = Workspace:WaitForChild("NPCs")
 local visualsFolder = Workspace:WaitForChild("Visuals")
 
 local tpHeight = 6
-local tpSpeed = 200
-
-local oscillationAmplitude = 0
-local oscillationSpeed = 0
+local oscillationAmplitude = 2
+local oscillationSpeed = 5
 
 local MAX_DISTANCE = 500
 local autoFarmDungeon = false
@@ -260,17 +260,6 @@ Tabs.Main:AddSlider("TPHeightAFQ",{
     end
 })
 
-Tabs.Main:AddSlider("TPSpeedAFQ",{
-    Title = "TP Speed",
-    Min = 50,
-    Max = 400,
-    Default = tpSpeed,
-    Rounding = 1,
-    Callback = function(v)
-        tpSpeed = v
-    end
-})
-
 local function StartFly(hrp)
     if FLYING then return end
     FLYING = true
@@ -280,11 +269,10 @@ local function StartFly(hrp)
 
     BG.P = 9e4
     BG.MaxTorque = Vector3.new(9e9,9e9,9e9)
-    BG.CFrame = hrp.CFrame
     BG.Parent = hrp
 
     BV.MaxForce = Vector3.new(9e9,9e9,9e9)
-    BV.Velocity = Vector3.new(0,0,0)
+    BV.Velocity = Vector3.new(0,0.1,0)
     BV.Parent = hrp
 end
 
@@ -300,13 +288,11 @@ local function getNearestMob(hrp)
     local dist = MAX_DISTANCE
 
     for _,mob in ipairs(npcFolder:GetChildren()) do
-
         if mob:IsA("Model") then
 
             local hum = mob:FindFirstChildOfClass("Humanoid")
 
             if hum and hum.Health > 0 then
-
                 local pos = mob:GetPivot().Position
                 local d = (pos - hrp.Position).Magnitude
 
@@ -314,7 +300,6 @@ local function getNearestMob(hrp)
                     dist = d
                     best = mob
                 end
-
             end
         end
     end
@@ -325,11 +310,16 @@ end
 local function checkHeal(root)
 
     for _,obj in ipairs(visualsFolder:GetChildren()) do
-
         if obj:IsA("Part") and obj.Name == "Heal" then
 
+            StopFly()
+
+            task.wait(0.1)
+
             root.CFrame = obj.CFrame + Vector3.new(0,2,0)
+
             task.wait(1)
+
             return true
         end
     end
@@ -366,17 +356,15 @@ local function AutoFarm()
                 math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
             local targetPos =
-                mobRoot.Position + Vector3.new(0,tpHeight,oscillation)
+                mobRoot.Position + Vector3.new(0, tpHeight, oscillation)
 
             StartFly(hrp)
 
-            local dir = (targetPos - hrp.Position)
+            hrp.CFrame = CFrame.new(targetPos)
 
-            if dir.Magnitude > 1 then
-                BV.Velocity = dir.Unit * tpSpeed
+            if BG then
+                BG.CFrame = CFrame.lookAt(hrp.Position, mobRoot.Position)
             end
-
-            BG.CFrame = CFrame.lookAt(hrp.Position, mobRoot.Position)
 
             for _,v in ipairs(char:GetDescendants()) do
                 if v:IsA("BasePart") then
@@ -386,7 +374,7 @@ local function AutoFarm()
 
         end
 
-        task.wait()
+        task.wait(0.08)
     end
 
     StopFly()
@@ -395,11 +383,9 @@ end
 task.spawn(function()
 
     while true do
-
         if autoFarmDungeon then
             AutoFarm()
         end
-
         task.wait(1)
     end
 
