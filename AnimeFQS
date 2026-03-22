@@ -27,7 +27,6 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
-
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 -- =========================================================
@@ -223,7 +222,7 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON (TP + FLY + SMART BOSS SYSTEM)
+-- AUTO FARM DUNGEON
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -231,6 +230,8 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local npcFolder = Workspace:WaitForChild("NPCs")
 local visualsFolder = Workspace:WaitForChild("Visuals")
+
+local BOSS_PLACE_ID = 113963744934619
 
 local tpHeight = 6
 local oscillationAmplitude = 2
@@ -382,7 +383,8 @@ local function AutoFarm()
         end
 
         local mob
-        if isBossActive() then
+
+        if game.PlaceId == BOSS_PLACE_ID and isBossActive() then
             mob = getBoss()
         else
             mob = getNearestMob(hrp)
