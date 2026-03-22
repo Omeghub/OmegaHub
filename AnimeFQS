@@ -46,7 +46,7 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
-    --Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
+    Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
     --Players = Window:AddTab({Title = "Player", Icon = "layers" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -223,7 +223,7 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON (TP + FLY AU-DESSUS)
+-- AUTO FARM DUNGEON (TP + FLY + SMART BOSS SYSTEM)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -285,6 +285,41 @@ local function StopFly()
     if BV then BV:Destroy() BV = nil end
 end
 
+local function isBossActive()
+
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return false end
+
+    local bossGui = playerGui:FindFirstChild("BossHealth")
+    if not bossGui then return false end
+
+    if bossGui.Enabled ~= true then return false end
+
+    local mobHealth = bossGui:FindFirstChild("MobHealth")
+    if not mobHealth then return false end
+
+    local bar = mobHealth:FindFirstChild("Bar")
+    if not bar then return false end
+
+    return bar.Visible == false
+end
+
+local function getBoss()
+
+    if not Workspace:FindFirstChild("Boss") then return end
+
+    for _, obj in ipairs(Workspace.Boss:GetChildren()) do
+        if obj:IsA("Model") then
+
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+
+            if hum and hum.Health > 0 then
+                return obj
+            end
+        end
+    end
+end
+
 local function getNearestMob(hrp)
 
     local best
@@ -316,13 +351,11 @@ local function checkHeal(root)
         if obj:IsA("Part") and obj.Name == "Heal" then
 
             StopFly()
-
             task.wait(0.1)
 
-            root.CFrame = obj.CFrame + Vector3.new(0,0,0)
+            root.CFrame = obj.CFrame
 
             task.wait(0.5)
-
             return true
         end
     end
@@ -348,7 +381,12 @@ local function AutoFarm()
             continue
         end
 
-        local mob = getNearestMob(hrp)
+        local mob
+        if isBossActive() then
+            mob = getBoss()
+        else
+            mob = getNearestMob(hrp)
+        end
 
         if mob and mob:FindFirstChild("HumanoidRootPart") then
 
@@ -374,7 +412,6 @@ local function AutoFarm()
                     v.CanCollide = false
                 end
             end
-
         end
 
         task.wait(0.08)
