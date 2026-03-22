@@ -47,7 +47,7 @@ local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
     --Test = Window:AddTab({ Title = "Test", Icon = "sword" }),
     --Players = Window:AddTab({Title = "Player", Icon = "layers" }),
-    --Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Webhook = Window:AddTab({ Title = "Webhook", Icon = "book" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 -- =========================================================
@@ -429,6 +429,193 @@ task.spawn(function()
             AutoFarm()
         end
         task.wait(1)
+    end
+
+end)
+-- =========================================================
+-- WEBHOOK SYSTEM (FINAL - EMOJI COLOR STYLE)
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+
+local HttpRequest =
+    (syn and syn.request)
+    or (http and http.request)
+    or http_request
+    or request
+    or (fluxus and fluxus.request)
+
+if not HttpRequest then
+    error("Executor incompatible")
+end
+
+local WebhookFile = "MyWebhook.txt"
+local WebhookUrl = ""
+
+if pcall(function() return readfile(WebhookFile) end) then
+    WebhookUrl = readfile(WebhookFile)
+end
+
+Tabs.Webhook:AddSection("Webhook")
+
+Tabs.Webhook:AddInput("WebhookInput", {
+    Title = "Discord Webhook",
+    Description = "Paste your webhook here",
+    Default = WebhookUrl,
+    Placeholder = "https://discord.com/api/webhooks/...",
+    Callback = function(value)
+        WebhookUrl = value
+        pcall(function() writefile(WebhookFile, value) end)
+    end
+})
+
+local RarityEmoji = {
+    Common = "⚪",
+    Rare = "🔵",
+    Epic = "🟣",
+    Legendary = "🟡",
+    Mythic = "🔴",
+    Exclusive = "🟥"
+}
+
+local function sendWebhook(rewards)
+
+    if WebhookUrl == "" then return end
+
+    local text = ""
+
+    for _, r in ipairs(rewards) do
+
+        local rarity = r.rarity
+        if rarity == "Unknown" or rarity == "UIGradient" then
+            rarity = "Common"
+        end
+
+        local emoji = RarityEmoji[rarity] or "⚪"
+
+        text = text ..
+            emoji .. " **" .. r.name .. "**\n" ..
+            "Quantity: " .. r.quantity .. "\n" ..
+            "Rarity: " .. rarity .. "\n\n"
+    end
+
+    if text == "" then
+        text = "No rewards detected"
+    end
+
+    HttpRequest({
+        Url = WebhookUrl,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = HttpService:JSONEncode({
+            username = "Anime Finals Quest",
+            embeds = {
+                {
+                    title = "🎁 Dungeon Rewards",
+                    description = text,
+                    color = 0, -- neutre (pas de couleur embed)
+                    footer = {
+                        text = os.date("%d/%m/%Y %H:%M")
+                    }
+                }
+            }
+        })
+    })
+end
+
+local function getRewards()
+
+    local rewards = {}
+
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return rewards end
+
+    local endScreen = playerGui:FindFirstChild("EndScreen")
+    if not endScreen or not endScreen.Enabled then return rewards end
+
+    local screen = endScreen:FindFirstChild("Screen")
+    local frame = screen and screen:FindFirstChild("Frame")
+    local frame2 = frame and frame:FindFirstChild("Frame2")
+    local itemsFrame = frame2 and frame2:FindFirstChild("Frame")
+
+    if not itemsFrame or not itemsFrame.Visible then return rewards end
+
+    for _, item in ipairs(itemsFrame:GetChildren()) do
+        if item:IsA("ImageLabel")
+        and item.Name ~= "Template"
+        and item.Name ~= "Reward1" then
+
+            local nameLabel = item:FindFirstChild("ItemName")
+            local qtyLabel = item:FindFirstChild("Quantity")
+
+            local itemName = nameLabel and nameLabel.Text or "Unknown"
+            local quantity = qtyLabel and qtyLabel.Text or "1"
+
+            local rarity = "Common"
+
+            for _, grad in ipairs(item:GetChildren()) do
+                if grad:IsA("UIGradient") and grad.Enabled then
+                    rarity = grad.Name
+                    break
+                end
+            end
+
+            if rarity == "UIGradient" then
+                rarity = "Common"
+            end
+
+            table.insert(rewards, {
+                name = itemName,
+                quantity = quantity,
+                rarity = rarity
+            })
+        end
+    end
+
+    return rewards
+end
+
+local alreadySent = false
+
+task.spawn(function()
+
+    while task.wait(0.5) do
+
+        if WebhookUrl == "" then continue end
+
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if not playerGui then continue end
+
+        local endScreen = playerGui:FindFirstChild("EndScreen")
+        if not endScreen then continue end
+
+        local screen = endScreen:FindFirstChild("Screen")
+        local frame = screen and screen:FindFirstChild("Frame")
+        local frame2 = frame and frame:FindFirstChild("Frame2")
+        local itemsFrame = frame2 and frame2:FindFirstChild("Frame")
+
+        if endScreen.Enabled
+        and frame and frame.Visible
+        and frame2 and frame2.Visible
+        and itemsFrame and itemsFrame.Visible then
+
+            if not alreadySent then
+                alreadySent = true
+
+                task.wait(1)
+
+                local rewards = getRewards()
+                sendWebhook(rewards)
+            end
+
+        else
+            alreadySent = false
+        end
+
     end
 
 end)
