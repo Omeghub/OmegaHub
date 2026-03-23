@@ -220,9 +220,8 @@ task.spawn(function()
     end
 
 end)
-
 -- =========================================================
--- AUTO FARM DUNGEON (FULL SMART + ANTI STUCK)
+-- AUTO FARM DUNGEON (FULL SMART + HEAL FIX)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -301,6 +300,56 @@ local function resetCharacter()
     end
 end
 
+local function isFullHealth()
+
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then return false end
+
+    local screen = playerGui:FindFirstChild("ScreenGuiIngame")
+    if not screen then return false end
+
+    local bar = screen:FindFirstChild("Healtbar")
+    if not bar then return false end
+
+    local textLabel = bar:FindFirstChild("HealthBarText")
+    if not textLabel then return false end
+
+    local text = textLabel.Text -- "490/490"
+
+    local current, max = string.match(text, "(%d+)%s*/%s*(%d+)")
+
+    current = tonumber(current)
+    max = tonumber(max)
+
+    if current and max then
+        return current >= max
+    end
+
+    return false
+end
+
+local function checkHeal(root)
+
+    if isFullHealth() then
+        return false
+    end
+
+    for _,obj in ipairs(visualsFolder:GetChildren()) do
+        if obj:IsA("Part") and obj.Name == "Heal" then
+
+            StopFly()
+            task.wait(0.1)
+
+            root.CFrame = obj.CFrame
+
+            task.wait(0.5)
+            return true
+        end
+    end
+
+    return false
+end
+
 local function isBossActive()
 
     local playerGui = player:FindFirstChild("PlayerGui")
@@ -377,24 +426,6 @@ local function getNearestMob(hrp)
     return best
 end
 
-local function checkHeal(root)
-
-    for _,obj in ipairs(visualsFolder:GetChildren()) do
-        if obj:IsA("Part") and obj.Name == "Heal" then
-
-            StopFly()
-            task.wait(0.1)
-
-            root.CFrame = obj.CFrame
-
-            task.wait(0.5)
-            return true
-        end
-    end
-
-    return false
-end
-
 local function AutoFarm()
 
     local startTime = tick()
@@ -458,7 +489,6 @@ local function AutoFarm()
 
                 lastPosition = currentPos
 
-                -- TP
                 local timeElapsed = tick() - startTime
 
                 local oscillation =
@@ -475,7 +505,6 @@ local function AutoFarm()
                     BG.CFrame = CFrame.lookAt(hrp.Position, mobCFrame.Position)
                 end
 
-                -- noclip
                 for _,v in ipairs(char:GetDescendants()) do
                     if v:IsA("BasePart") then
                         v.CanCollide = false
@@ -499,6 +528,117 @@ task.spawn(function()
         task.wait(1)
     end
 
+end)
+-- =========================================================
+-- AUTO AWAKENING 
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+
+local autoAwaken = false
+local awakeningInProgress = false
+
+Tabs.Main:AddToggle("AutoAwakenAFQ", {
+    Title = "Auto Awakening",
+    Default = true,
+    Callback = function(v)
+        autoAwaken = v
+        print("AutoAwaken:", v)
+    end
+})
+
+local function pressG(times)
+
+    for i = 1, times do
+
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+
+        task.wait(0.1)
+    end
+
+end
+
+local function getWave()
+
+    local gui = player:FindFirstChild("PlayerGui")
+    if not gui then return end
+
+    local waveGui = gui:FindFirstChild("WaveTest")
+    if not waveGui then return end
+
+    local waveLabel = waveGui:FindFirstChild("Wave")
+    if not waveLabel then return end
+
+    local text = waveLabel.Text
+    local number = string.match(text, "%d+")
+
+    return tonumber(number)
+end
+
+local function getAwakenValue()
+
+    local val = player:FindFirstChild("Awakening")
+
+    if not val then
+        return
+    end
+
+    return val.Value
+end
+
+task.spawn(function()
+
+    while task.wait(0.2) do
+
+        if not autoAwaken then continue end
+        if awakeningInProgress then continue end
+
+        local wave = getWave()
+        local awakenValue = getAwakenValue()
+
+        if not wave or not awakenValue then continue end
+
+        if wave == 10 and awakenValue == 200 then
+
+            awakeningInProgress = true
+
+            local oldAttack = autoAttack
+            local oldSpell = autoSpell
+            local oldFarm = autoFarmDungeon
+
+            autoAttack = false
+            autoSpell = false
+            autoFarmDungeon = false
+
+            if StopFly then
+                StopFly()
+            end
+
+            task.wait(0.8)
+
+            pressG(20)
+
+            local timeout = tick() + 6
+
+            repeat
+                task.wait(0.2)
+                awakenValue = getAwakenValue()
+            until awakenValue == 0 or tick() > timeout
+
+            task.wait(0.5)
+
+            autoAttack = oldAttack
+            autoSpell = oldSpell
+            autoFarmDungeon = oldFarm
+
+            awakeningInProgress = false
+        end
+    end
 end)
 -- =========================================================
 -- WEBHOOK SYSTEM (FINAL - EMOJI COLOR STYLE)
@@ -682,6 +822,75 @@ task.spawn(function()
 
         else
             alreadySent = false
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO RESET Anti Stuck
+
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+local RESET_DELAY = 10
+local resetInProgress = false
+local zeroStartTime = nil
+
+local function resetCharacter()
+    local char = player.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.Health = 0
+        end
+    end
+end
+
+local function getRemainingText()
+
+    local gui = player:FindFirstChild("PlayerGui")
+    if not gui then return end
+
+    local waveGui = gui:FindFirstChild("WaveTest")
+    if not waveGui then return end
+
+    local remaining = waveGui:FindFirstChild("Remaining")
+    if not remaining then return end
+
+    return remaining.Text
+end
+
+task.spawn(function()
+
+    while task.wait(0.5) do
+
+        if resetInProgress then continue end
+
+        local text = getRemainingText()
+
+        if text and string.find(text, "0") then
+
+            if not zeroStartTime then
+                zeroStartTime = tick()
+            end
+
+            if tick() - zeroStartTime >= RESET_DELAY then
+
+                resetInProgress = true
+
+                for i = 1, 2 do
+                    resetCharacter()
+                    task.wait(1.5)
+                end
+
+                zeroStartTime = nil
+                resetInProgress = false
+            end
+
+        else
+            zeroStartTime = nil
         end
 
     end
