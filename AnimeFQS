@@ -222,7 +222,7 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON
+-- AUTO FARM DUNGEON (FULL SMART TARGET)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -237,7 +237,7 @@ local tpHeight = 6
 local oscillationAmplitude = 2
 local oscillationSpeed = 5
 
-local MAX_DISTANCE = 500
+local MAX_DISTANCE = 5000
 local autoFarmDungeon = false
 
 local FLYING = false
@@ -286,6 +286,9 @@ local function StopFly()
     if BV then BV:Destroy() BV = nil end
 end
 
+-- =========================================================
+-- CHECK BOSS GUI
+-- =========================================================
 local function isBossActive()
 
     local playerGui = player:FindFirstChild("PlayerGui")
@@ -332,12 +335,28 @@ local function getNearestMob(hrp)
             local hum = mob:FindFirstChildOfClass("Humanoid")
 
             if hum and hum.Health > 0 then
-                local pos = mob:GetPivot().Position
-                local d = (pos - hrp.Position).Magnitude
 
-                if d < dist then
-                    dist = d
-                    best = mob
+                local pos
+                local hrpMob = mob:FindFirstChild("HumanoidRootPart")
+
+                if hrpMob then
+                    pos = hrpMob.Position
+                else
+                    local success, pivot = pcall(function()
+                        return mob:GetPivot()
+                    end)
+                    if success and pivot then
+                        pos = pivot.Position
+                    end
+                end
+
+                if pos then
+                    local d = (pos - hrp.Position).Magnitude
+
+                    if d < dist then
+                        dist = d
+                        best = mob
+                    end
                 end
             end
         end
@@ -390,28 +409,45 @@ local function AutoFarm()
             mob = getNearestMob(hrp)
         end
 
-        if mob and mob:FindFirstChild("HumanoidRootPart") then
+        if mob then
 
-            local mobRoot = mob.HumanoidRootPart
-            local timeElapsed = tick() - startTime
+            local mobCFrame
 
-            local oscillation =
-                math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
+            local hrpMob = mob:FindFirstChild("HumanoidRootPart")
 
-            local targetPos =
-                mobRoot.Position + Vector3.new(0, tpHeight, oscillation)
-
-            StartFly(hrp)
-
-            hrp.CFrame = CFrame.new(targetPos)
-
-            if BG then
-                BG.CFrame = CFrame.lookAt(hrp.Position, mobRoot.Position)
+            if hrpMob then
+                mobCFrame = hrpMob.CFrame
+            else
+                local success, pivot = pcall(function()
+                    return mob:GetPivot()
+                end)
+                if success and pivot then
+                    mobCFrame = pivot
+                end
             end
 
-            for _,v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
+            if mobCFrame then
+
+                local timeElapsed = tick() - startTime
+
+                local oscillation =
+                    math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
+
+                local targetPos =
+                    mobCFrame.Position + Vector3.new(0, tpHeight, oscillation)
+
+                StartFly(hrp)
+
+                hrp.CFrame = CFrame.new(targetPos)
+
+                if BG then
+                    BG.CFrame = CFrame.lookAt(hrp.Position, mobCFrame.Position)
+                end
+
+                for _,v in ipairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = false
+                    end
                 end
             end
         end
