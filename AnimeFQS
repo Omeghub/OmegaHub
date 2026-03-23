@@ -231,8 +231,14 @@ local npcFolder = Workspace:WaitForChild("NPCs")
 local visualsFolder = Workspace:WaitForChild("Visuals")
 
 local BOSS_PLACE_ID = 113963744934619
-local SPECIAL_PLACE_ID = 73912821025828
-local SPECIAL_BOSS_NAME = "Restless Gambler"
+local SPECIAL_PLACE_IDS = {
+    [73912821025828] = true,
+    [81100481912247] = true
+}
+local SPECIAL_BOSS_NAMES = {
+    ["Restless Gambler"] = true,
+    ["Boss"] = true
+}
 local SPECIAL_DISTANCE = 15
 
 local tpHeight = 6
@@ -449,18 +455,20 @@ local function AutoFarm()
 
     local mob
 
-    if game.PlaceId == SPECIAL_PLACE_ID then
+    if SPECIAL_PLACE_IDS[game.PlaceId] then
 
         local bossFolder = Workspace:FindFirstChild("Boss")
 
         if bossFolder then
-            local specialBoss = bossFolder:FindFirstChild(SPECIAL_BOSS_NAME)
+            for _, boss in ipairs(bossFolder:GetChildren()) do
+                if boss:IsA("Model") and SPECIAL_BOSS_NAMES[boss.Name] then
 
-            if specialBoss then
-                local hum = specialBoss:FindFirstChildOfClass("Humanoid")
+                    local hum = boss:FindFirstChildOfClass("Humanoid")
 
-                if hum and hum.Health > 0 then
-                    mob = specialBoss
+                    if hum and hum.Health > 0 then
+                        mob = boss
+                        break
+                    end
                 end
             end
         end
@@ -519,7 +527,7 @@ local function AutoFarm()
 
                 local targetPos
 
-                    if game.PlaceId == SPECIAL_PLACE_ID and mob.Name == SPECIAL_BOSS_NAME then
+                    if SPECIAL_PLACE_IDS[game.PlaceId] and SPECIAL_BOSS_NAMES[mob.Name] then
                         local dir = (hrp.Position - mobCFrame.Position).Unit
                         targetPos = mobCFrame.Position + dir * SPECIAL_DISTANCE + Vector3.new(0, tpHeight, 0)
                     else
@@ -558,16 +566,26 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO AWAKENING 
+-- AUTO AWAKENING (MULTI MAP SUPPORT)
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 
 local autoAwaken = false
 local awakeningInProgress = false
+
+local AUTO_AWAKEN_PLACE_IDS = {
+    [113963744934619] = true,
+    [73912821025828] = true,
+    [81100481912247] = true,
+    [73019180051115] = true,
+    [95996380540192] = true,
+    [92577188734435] = true,
+    [112175864208911] = true
+
+}
 
 Tabs.Main:AddToggle("AutoAwakenAFQ", {
     Title = "Auto Awakening",
@@ -602,21 +620,14 @@ local function getWave()
     local waveLabel = waveGui:FindFirstChild("Wave")
     if not waveLabel then return end
 
-    local text = waveLabel.Text
-    local number = string.match(text, "%d+")
-
+    local number = string.match(waveLabel.Text, "%d+")
     return tonumber(number)
 end
 
 local function getAwakenValue()
 
     local val = player:FindFirstChild("Awakening")
-
-    if not val then
-        return
-    end
-
-    return val.Value
+    return val and val.Value
 end
 
 task.spawn(function()
@@ -629,9 +640,23 @@ task.spawn(function()
         local wave = getWave()
         local awakenValue = getAwakenValue()
 
-        if not wave or not awakenValue then continue end
+        if not awakenValue then continue end
 
-        if wave == 10 and awakenValue == 200 then
+        local shouldAwaken = false
+
+        if AUTO_AWAKEN_PLACE_IDS[game.PlaceId] then
+            if awakenValue == 200 then
+                shouldAwaken = true
+            end
+        else
+            if wave == 10 and awakenValue == 200 then
+                shouldAwaken = true
+            end
+        end
+
+        if shouldAwaken then
+
+            print("🔥 Awakening Triggered")
 
             awakeningInProgress = true
 
@@ -666,7 +691,9 @@ task.spawn(function()
 
             awakeningInProgress = false
         end
+
     end
+
 end)
 -- =========================================================
 -- WEBHOOK SYSTEM (FINAL - EMOJI COLOR STYLE)
