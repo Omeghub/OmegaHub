@@ -222,7 +222,7 @@ task.spawn(function()
 end)
 
 -- =========================================================
--- AUTO FARM DUNGEON (FULL SMART TARGET)
+-- AUTO FARM DUNGEON (FULL SMART + ANTI STUCK)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -237,11 +237,16 @@ local tpHeight = 6
 local oscillationAmplitude = 2
 local oscillationSpeed = 5
 
-local MAX_DISTANCE = 5000
+local MAX_DISTANCE = 10000
 local autoFarmDungeon = false
 
 local FLYING = false
 local BG, BV
+
+local lastPosition = nil
+local lastMoveTime = tick()
+local STUCK_TIME = 60
+local SAFE_DISTANCE_FROM_MOB = 15
 
 Tabs.Main:AddSection("Auto Tp")
 
@@ -286,9 +291,16 @@ local function StopFly()
     if BV then BV:Destroy() BV = nil end
 end
 
--- =========================================================
--- CHECK BOSS GUI
--- =========================================================
+local function resetCharacter()
+    local char = player.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.Health = 0
+        end
+    end
+end
+
 local function isBossActive()
 
     local playerGui = player:FindFirstChild("PlayerGui")
@@ -428,6 +440,25 @@ local function AutoFarm()
 
             if mobCFrame then
 
+                local currentPos = hrp.Position
+
+                if lastPosition then
+                    local moveDist = (currentPos - lastPosition).Magnitude
+                    local mobDist = (currentPos - mobCFrame.Position).Magnitude
+
+                    if moveDist < 1 and mobDist > SAFE_DISTANCE_FROM_MOB then
+                        if tick() - lastMoveTime > STUCK_TIME then
+                            resetCharacter()
+                            lastMoveTime = tick()
+                        end
+                    else
+                        lastMoveTime = tick()
+                    end
+                end
+
+                lastPosition = currentPos
+
+                -- TP
                 local timeElapsed = tick() - startTime
 
                 local oscillation =
@@ -444,6 +475,7 @@ local function AutoFarm()
                     BG.CFrame = CFrame.lookAt(hrp.Position, mobCFrame.Position)
                 end
 
+                -- noclip
                 for _,v in ipairs(char:GetDescendants()) do
                     if v:IsA("BasePart") then
                         v.CanCollide = false
