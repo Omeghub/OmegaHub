@@ -231,6 +231,9 @@ local npcFolder = Workspace:WaitForChild("NPCs")
 local visualsFolder = Workspace:WaitForChild("Visuals")
 
 local BOSS_PLACE_ID = 113963744934619
+local SPECIAL_PLACE_ID = 73912821025828
+local SPECIAL_BOSS_NAME = "Restless Gambler"
+local SPECIAL_DISTANCE = 15
 
 local tpHeight = 6
 local oscillationAmplitude = 2
@@ -444,9 +447,29 @@ local function AutoFarm()
             continue
         end
 
-        local mob
+    local mob
 
-        if game.PlaceId == BOSS_PLACE_ID and isBossActive() then
+    if game.PlaceId == SPECIAL_PLACE_ID then
+
+        local bossFolder = Workspace:FindFirstChild("Boss")
+
+        if bossFolder then
+            local specialBoss = bossFolder:FindFirstChild(SPECIAL_BOSS_NAME)
+
+            if specialBoss then
+                local hum = specialBoss:FindFirstChildOfClass("Humanoid")
+
+                if hum and hum.Health > 0 then
+                    mob = specialBoss
+                end
+            end
+        end
+
+        if not mob then
+            mob = getNearestMob(hrp)
+        end
+
+        elseif game.PlaceId == BOSS_PLACE_ID and isBossActive() then
             mob = getBoss()
         else
             mob = getNearestMob(hrp)
@@ -494,9 +517,14 @@ local function AutoFarm()
                 local oscillation =
                     math.sin(timeElapsed * oscillationSpeed) * oscillationAmplitude
 
-                local targetPos =
-                    mobCFrame.Position + Vector3.new(0, tpHeight, oscillation)
+                local targetPos
 
+                    if game.PlaceId == SPECIAL_PLACE_ID and mob.Name == SPECIAL_BOSS_NAME then
+                        local dir = (hrp.Position - mobCFrame.Position).Unit
+                        targetPos = mobCFrame.Position + dir * SPECIAL_DISTANCE + Vector3.new(0, tpHeight, 0)
+                    else
+                        targetPos = mobCFrame.Position + Vector3.new(0, tpHeight, oscillation)
+                    end
                 StartFly(hrp)
 
                 hrp.CFrame = CFrame.new(targetPos)
@@ -896,6 +924,7 @@ task.spawn(function()
     end
 
 end)
+
 -- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
