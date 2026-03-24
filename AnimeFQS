@@ -889,7 +889,7 @@ local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-local RESET_DELAY = 10
+local RESET_DELAY = 25
 local resetInProgress = false
 local zeroStartTime = nil
 
