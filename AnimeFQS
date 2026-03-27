@@ -242,7 +242,7 @@ local SPECIAL_PLACE_IDS = {
 }
 local SPECIAL_BOSS_NAMES = {
     ["Restless Gambler"] = true,
-    ["Boss"] = true
+    ["Boss"] = true,
     ["DIO"] = true
 }
 local SPECIAL_DISTANCE = 15
