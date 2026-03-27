@@ -237,11 +237,13 @@ local visualsFolder = Workspace:WaitForChild("Visuals")
 local BOSS_PLACE_ID = 113963744934619
 local SPECIAL_PLACE_IDS = {
     [73912821025828] = true,
-    [81100481912247] = true
+    [81100481912247] = true,
+    [95240177479580] = true
 }
 local SPECIAL_BOSS_NAMES = {
     ["Restless Gambler"] = true,
     ["Boss"] = true
+    ["DIO"] = true
 }
 local SPECIAL_DISTANCE = 15
 
