@@ -74,7 +74,7 @@ end)
 
 Tabs.Main:AddToggle("AutoAttack",{
     Title = "Auto Attack",
-    Description = "Attaque automatiquement",
+    Description = "Auto Attack",
     Default = false,
     Callback = function(state)
         autoAttack = state
@@ -125,7 +125,7 @@ end)
 
 Tabs.Main:AddToggle("AutoSkill", {
     Title = "Auto Skill",
-    Description = "Lance tous les skills toutes les 2 secondes",
+    Description = "Auto Skill",
     Default = false,
     Callback = function(state)
         autoSkill = state
