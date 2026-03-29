@@ -132,7 +132,7 @@ Tabs.Main:AddToggle("AutoSkill", {
     end
 })
 -- =========================================================
--- AUTO TP MOBS + FX MARKER PRIORITY
+-- AUTO TP MOBS + FX MARKER PRIORITY (RESPAWN FIX)
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -143,6 +143,7 @@ local fxFolder = workspace:WaitForChild("MainWorkspaceComponents"):WaitForChild(
 local autoTP = false
 local distance = 6
 local currentMob = nil
+
 local FLYING = false
 local BG, BV
 
@@ -167,6 +168,19 @@ local function StopFly()
     if BG then BG:Destroy() BG = nil end
     if BV then BV:Destroy() BV = nil end
 end
+
+player.CharacterAdded:Connect(function(char)
+    StopFly()
+    currentMob = nil
+
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    task.wait(0.5)
+
+    if autoTP then
+        StartFly(hrp)
+    end
+end)
 
 Tabs.Main:AddToggle("AutoTPMob", {
     Title = "Auto TP Mobs (Marker Priority)",
@@ -219,7 +233,11 @@ task.spawn(function()
 
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if not hrp then continue end
+
+            if not hrp then 
+                currentMob = nil
+                continue 
+            end
 
             StartFly(hrp)
 
@@ -265,9 +283,7 @@ task.spawn(function()
                 end
             end
         end
-
     end
-
 end)
 -- =========================================================
 -- CONFIGURATION SYSTEM
