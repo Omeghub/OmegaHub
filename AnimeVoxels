@@ -1,0 +1,427 @@
+if getgenv().ReinjectLoaded then return end
+getgenv().ReinjectLoaded = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScriptURL = "https://raw.githubusercontent.com/Omegahub1/20-20-/refs/heads/main/AnimeFinalsQuest"
+
+local queue = queue_on_teleport 
+           or (syn and syn.queue_on_teleport) 
+           or (fluxus and fluxus.queue_on_teleport) 
+           or queueonteleport
+
+if not queue then
+    return
+end
+
+local TeleportQueued = false
+
+LocalPlayer.OnTeleport:Connect(function()
+    if TeleportQueued then return end
+    TeleportQueued = true
+
+    queue([[
+        repeat task.wait() until game:IsLoaded()
+        task.wait(2)
+        loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
+    ]])
+end)
+-- =========================================================
+-- CHARGEMENT DE FLUENT ET INTERFACE
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/addons"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImBrokz89/test/main/Maddons"))()
+
+local Window = Fluent:CreateWindow({
+   Title = "Omega Hub I Anime Voxel",
+   TabWidth = 160,
+   Size = UDim2.fromOffset(580, 460),
+   Theme = "Dark",
+   Acrylic = false,
+   MinimizeKey = Enum.KeyCode.End 
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+-- =========================================================
+-- AUTO ATTACK
+local autoAttack = false
+
+task.spawn(function()
+    while true do
+        if autoAttack then
+            local args = {
+                Enum.KeyCode.Unknown,
+                Enum.UserInputType.MouseButton1,
+                [4] = {
+                    holdingControl = false
+                }
+            }
+
+            game:GetService("ReplicatedStorage")
+                :WaitForChild("Remotes")
+                :WaitForChild("Input")
+                :FireServer(unpack(args))
+        end
+        
+        task.wait(0.1)
+    end
+end)
+
+Tabs.Main:AddToggle("AutoAttack",{
+    Title = "Auto Attack",
+    Description = "Attaque automatiquement",
+    Default = false,
+    Callback = function(state)
+        autoAttack = state
+    end
+})
+-- =========================================================
+-- AUTO SKILL
+local autoSkill = false
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local hotbar = nil
+
+local function loadHotbar()
+    local gui = player:WaitForChild("PlayerGui")
+    local skills = gui:WaitForChild("Skills", 5)
+    if skills then
+        hotbar = skills:WaitForChild("Hotbar", 5)
+    end
+end
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    loadHotbar()
+end)
+
+loadHotbar()
+
+task.spawn(function()
+    while true do
+        if autoSkill and hotbar then
+            
+            for _, skill in pairs(hotbar:GetChildren()) do
+                if not autoSkill then break end
+
+                if skill:IsA("ImageButton") then
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Input"):FireServer(skill.Name)
+                end
+            end
+
+            task.wait(1)
+        else
+            task.wait(0.2)
+        end
+    end
+end)
+
+Tabs.Main:AddToggle("AutoSkill", {
+    Title = "Auto Skill",
+    Description = "Lance tous les skills toutes les 2 secondes",
+    Default = false,
+    Callback = function(state)
+        autoSkill = state
+    end
+})
+-- =========================================================
+-- AUTO TP MOBS + FX MARKER PRIORITY
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local liveFolder = workspace:WaitForChild("MainWorkspaceComponents"):WaitForChild("Living")
+local fxFolder = workspace:WaitForChild("MainWorkspaceComponents"):WaitForChild("FX")
+
+local autoTP = false
+local distance = 6
+local currentMob = nil
+local FLYING = false
+local BG, BV
+
+local function StartFly(hrp)
+    if FLYING then return end
+    FLYING = true
+
+    BG = Instance.new("BodyGyro")
+    BV = Instance.new("BodyVelocity")
+
+    BG.P = 9e4
+    BG.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    BG.Parent = hrp
+
+    BV.MaxForce = Vector3.new(9e9,9e9,9e9)
+    BV.Velocity = Vector3.new(0,0.1,0)
+    BV.Parent = hrp
+end
+
+local function StopFly()
+    FLYING = false
+    if BG then BG:Destroy() BG = nil end
+    if BV then BV:Destroy() BV = nil end
+end
+
+Tabs.Main:AddToggle("AutoTPMob", {
+    Title = "Auto TP Mobs (Marker Priority)",
+    Default = false,
+    Callback = function(value)
+        autoTP = value
+        if not value then StopFly() end
+    end
+})
+
+Tabs.Main:AddSlider("MobDistance", {
+    Title = "Height",
+    Default = 6,
+    Min = 3,
+    Max = 20,
+    Rounding = 1,
+    Callback = function(value)
+        distance = value
+    end
+})
+
+local function isPlayer(mob)
+    return Players:GetPlayerFromCharacter(mob) ~= nil
+end
+
+local function getAliveMob()
+    for _, mob in pairs(liveFolder:GetChildren()) do
+        if not isPlayer(mob) then
+            local hum = mob:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                return mob
+            end
+        end
+    end
+end
+
+local function getMarker()
+    for _, obj in pairs(fxFolder:GetChildren()) do
+        if obj:IsA("Part") and obj.Name == "Marker" then
+            return obj
+        end
+    end
+end
+
+task.spawn(function()
+
+    while task.wait(0.05) do
+
+        if autoTP then
+
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+
+            StartFly(hrp)
+
+            local marker = getMarker()
+
+            if marker then
+                local pos = marker.Position + Vector3.new(0, distance, 0)
+
+                hrp.CFrame = CFrame.new(pos)
+
+                if BG then
+                    BG.CFrame = CFrame.lookAt(hrp.Position, marker.Position)
+                end
+
+                continue
+            end
+
+            if not currentMob
+            or not currentMob.Parent
+            or isPlayer(currentMob)
+            or not currentMob:FindFirstChildOfClass("Humanoid")
+            or currentMob:FindFirstChildOfClass("Humanoid").Health <= 0 then
+
+                currentMob = getAliveMob()
+            end
+
+            if currentMob then
+                local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
+                if not mobHRP then continue end
+
+                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
+
+                hrp.CFrame = CFrame.new(targetPos)
+
+                if BG then
+                    BG.CFrame = CFrame.lookAt(hrp.Position, mobHRP.Position)
+                end
+
+                for _,v in ipairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO REPLAY
+local autoReplay = false
+
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function clickButton(button)
+    local pos = button.AbsolutePosition
+    local size = button.AbsoluteSize
+
+    local x = pos.X + size.X / 2
+    local y = pos.Y + size.Y / 2
+
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if autoReplay then
+
+            local gui = player:FindFirstChild("PlayerGui")
+            local results = gui and gui:FindFirstChild("ResultsScreenNew")
+
+            if results and results.Enabled == true then
+                
+                local replyButton = results
+                    :WaitForChild("Victory")
+                    :WaitForChild("MainFrame")
+                    :WaitForChild("MainFrames")
+                    :WaitForChild("MainFrame")
+                    :WaitForChild("ReplyButton")
+
+                if replyButton then
+                    task.wait(1)
+                    clickButton(replyButton)
+                end
+
+                task.wait(3)
+            end
+        end
+    end
+end)
+
+Tabs.Main:AddToggle("AutoReplay", {
+    Title = "Auto Replay",
+    Description = "Clique automatiquement sur Replay",
+    Default = false,
+    Callback = function(state)
+        autoReplay = state
+    end
+})
+-- =========================================================
+-- CONFIGURATION SYSTEM
+-- =========================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+Window:SelectTab(1)
+-------------
+-- =========================
+-- MOBILE / PC BUTTON
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FluentMobileButton"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+local openButton = Instance.new("ImageButton")
+openButton.Size = UDim2.new(0, 40, 0, 40)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+openButton.BackgroundTransparency = 0.5
+openButton.Image = "rbxassetid://133520358863074"
+openButton.ScaleType = Enum.ScaleType.Fit
+openButton.BorderSizePixel = 0
+openButton.Parent = screenGui
+openButton.ZIndex = 10
+
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 20)
+uicorner.Parent = openButton
+
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    openButton.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = openButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+openButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+openButton.MouseButton1Click:Connect(function()
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+end)
+
+local function removeButton()
+    if openButton and openButton.Parent then
+        openButton:Destroy()
+    end
+end
+
+if Window.UI and Window.UI.CloseButton then
+    Window.UI.CloseButton.MouseButton1Click:Connect(function()
+        removeButton()
+    end)
+else
+    if Window.OnClose then
+        local oldClose = Window.OnClose
+        Window.OnClose = function()
+            removeButton()
+            if oldClose then oldClose() end
+        end
+    end
+end
