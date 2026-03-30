@@ -74,7 +74,7 @@ end)
 
 Tabs.Main:AddToggle("AutoAttack",{
     Title = "Auto Attack",
-    Description = "Auto Attack",
+    Description = "Attaque automatiquement",
     Default = false,
     Callback = function(state)
         autoAttack = state
@@ -125,14 +125,14 @@ end)
 
 Tabs.Main:AddToggle("AutoSkill", {
     Title = "Auto Skill",
-    Description = "Auto Skill",
+    Description = "Lance tous les skills toutes les 2 secondes",
     Default = false,
     Callback = function(state)
         autoSkill = state
     end
 })
 -- =========================================================
--- AUTO TP MOBS + FX MARKER PRIORITY (RESPAWN FIX)
+-- AUTO TP MOBS
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -143,7 +143,6 @@ local fxFolder = workspace:WaitForChild("MainWorkspaceComponents"):WaitForChild(
 local autoTP = false
 local distance = 6
 local currentMob = nil
-
 local FLYING = false
 local BG, BV
 
@@ -168,19 +167,6 @@ local function StopFly()
     if BG then BG:Destroy() BG = nil end
     if BV then BV:Destroy() BV = nil end
 end
-
-player.CharacterAdded:Connect(function(char)
-    StopFly()
-    currentMob = nil
-
-    local hrp = char:WaitForChild("HumanoidRootPart")
-
-    task.wait(0.5)
-
-    if autoTP then
-        StartFly(hrp)
-    end
-end)
 
 Tabs.Main:AddToggle("AutoTPMob", {
     Title = "Auto TP Mobs (Marker Priority)",
@@ -233,11 +219,7 @@ task.spawn(function()
 
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-            if not hrp then 
-                currentMob = nil
-                continue 
-            end
+            if not hrp then continue end
 
             StartFly(hrp)
 
@@ -268,7 +250,7 @@ task.spawn(function()
                 local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
                 if not mobHRP then continue end
 
-                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
+                local targetPos = mobHRP.Position + Vector3.new(0, -distance, 0)
 
                 hrp.CFrame = CFrame.new(targetPos)
 
@@ -283,8 +265,61 @@ task.spawn(function()
                 end
             end
         end
+
+    end
+
+end)
+-- =========================================================
+-- AUTO REPLAY (VICTORY + ENABLE CHECK + SAFE REMOTE)
+
+local autoReplay = false
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function getRemote()
+    local components = workspace:FindFirstChild("MainWorkspaceComponents")
+    local fx = components and components:FindFirstChild("FX")
+    local remote = fx and fx:FindFirstChild("RemoteEvent")
+
+    return remote
+end
+
+task.spawn(function()
+    local fired = false
+
+    while task.wait(0.3) do
+        if autoReplay then
+
+            local gui = player:FindFirstChild("PlayerGui")
+            local results = gui and gui:FindFirstChild("ResultsScreenNew")
+            local victory = results and results:FindFirstChild("Victory")
+
+            if results and results.Enabled and victory and victory.Visible and not fired then
+                fired = true
+
+                task.wait(1)
+
+                local remote = getRemote()
+
+                if remote then
+                    remote:FireServer("replay")
+                else
+                    warn("Remote introuvable ❌")
+                end
+            end
+        end
     end
 end)
+
+Tabs.Main:AddToggle("AutoReplay", {
+    Title = "Auto Replay",
+    Description = "Auto Replay",
+    Default = false,
+    Callback = function(state)
+        autoReplay = state
+    end
+})
 -- =========================================================
 -- CONFIGURATION SYSTEM
 -- =========================================================
