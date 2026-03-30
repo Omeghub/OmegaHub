@@ -27,6 +27,7 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
+
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -250,7 +251,7 @@ task.spawn(function()
                 local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
                 if not mobHRP then continue end
 
-                local targetPos = mobHRP.Position + Vector3.new(0, -distance, 0)
+                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
 
                 hrp.CFrame = CFrame.new(targetPos)
 
@@ -270,7 +271,7 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO REPLAY (VICTORY + ENABLE CHECK + SAFE REMOTE)
+-- AUTO REPLAY (VICTORY + DEFEAT + SAFE REMOTE)
 
 local autoReplay = false
 
@@ -281,7 +282,6 @@ local function getRemote()
     local components = workspace:FindFirstChild("MainWorkspaceComponents")
     local fx = components and components:FindFirstChild("FX")
     local remote = fx and fx:FindFirstChild("RemoteEvent")
-
     return remote
 end
 
@@ -293,9 +293,14 @@ task.spawn(function()
 
             local gui = player:FindFirstChild("PlayerGui")
             local results = gui and gui:FindFirstChild("ResultsScreenNew")
-            local victory = results and results:FindFirstChild("Victory")
 
-            if results and results.Enabled and victory and victory.Visible and not fired then
+            local victory = results and results:FindFirstChild("Victory")
+            local defeat = results and results:FindFirstChild("Defeat")
+
+            local isVictory = victory and victory.Visible
+            local isDefeat = defeat and defeat.Visible
+
+            if results and results.Enabled and (isVictory or isDefeat) and not fired then
                 fired = true
 
                 task.wait(1)
@@ -307,6 +312,10 @@ task.spawn(function()
                 else
                     warn("Remote introuvable ❌")
                 end
+            end
+
+            if not results or not results.Enabled or (not isVictory and not isDefeat) then
+                fired = false
             end
         end
     end
