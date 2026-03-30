@@ -251,7 +251,7 @@ task.spawn(function()
                 local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
                 if not mobHRP then continue end
 
-                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
+                local targetPos = mobHRP.Position + Vector3.new(0, -distance, 0)
 
                 hrp.CFrame = CFrame.new(targetPos)
 
