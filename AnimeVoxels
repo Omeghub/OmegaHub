@@ -27,7 +27,6 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
-
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -268,51 +267,23 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO REPLAY (VICTORY + DEFEAT)
+-- AUTO REPLAY LOOP (SPAM REMOTE)
+
 local autoReplay = false
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local function getRemote()
-    local components = workspace:FindFirstChild("MainWorkspaceComponents")
-    local fx = components and components:FindFirstChild("FX")
-    local remote = fx and fx:FindFirstChild("RemoteEvent")
-
-    return remote
-end
 
 task.spawn(function()
-    local fired = false
-
-    while task.wait(0.3) do
+    while task.wait(1.5) do
         if autoReplay then
 
-            local gui = player:FindFirstChild("PlayerGui")
-            local results = gui and gui:FindFirstChild("ResultsScreenNew")
+            local remote = workspace
+                :FindFirstChild("MainWorkspaceComponents")
+                and workspace.MainWorkspaceComponents:FindFirstChild("FX")
+                and workspace.MainWorkspaceComponents.FX:FindFirstChild("RemoteEvent")
 
-            local victory = results and results:FindFirstChild("Victory")
-            local defeat = results and results:FindFirstChild("Defeat")
-
-            local isVictory = victory and victory.Visible
-            local isDefeat = defeat and defeat.Visible
-
-            if results and results.Enabled and (isVictory or isDefeat) and not fired then
-                fired = true
-
-                task.wait(1)
-
-                local remote = getRemote()
-
-                if remote then
-                    remote:FireServer("replay")
-                else
-                    warn("Remote introuvable ❌")
-                end
-            end
-
-            if results and not results.Enabled then
-                fired = false
+            if remote then
+                remote:FireServer("replay")
             end
         end
     end
@@ -320,7 +291,6 @@ end)
 
 Tabs.Main:AddToggle("AutoReplay", {
     Title = "Auto Replay",
-    Description = "Auto Replay",
     Default = false,
     Callback = function(state)
         autoReplay = state
