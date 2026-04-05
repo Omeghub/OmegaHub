@@ -27,7 +27,6 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
-
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -251,7 +250,7 @@ task.spawn(function()
                 local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
                 if not mobHRP then continue end
 
-                local targetPos = mobHRP.Position + Vector3.new(0, -distance, 0)
+                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
 
                 hrp.CFrame = CFrame.new(targetPos)
 
@@ -271,8 +270,7 @@ task.spawn(function()
 
 end)
 -- =========================================================
--- AUTO REPLAY (VICTORY + DEFEAT + SAFE REMOTE)
-
+-- AUTO REPLAY (VICTORY + DEFEAT)
 local autoReplay = false
 
 local Players = game:GetService("Players")
@@ -280,8 +278,9 @@ local player = Players.LocalPlayer
 
 local function getRemote()
     local components = workspace:FindFirstChild("MainWorkspaceComponents")
-    local fx = components and components:FindFirstChild("FX")
+    local fx = components and components:FindFirstChild("FXx")
     local remote = fx and fx:FindFirstChild("RemoteEvent")
+
     return remote
 end
 
@@ -314,7 +313,7 @@ task.spawn(function()
                 end
             end
 
-            if not results or not results.Enabled or (not isVictory and not isDefeat) then
+            if results and not results.Enabled then
                 fired = false
             end
         end
@@ -323,7 +322,7 @@ end)
 
 Tabs.Main:AddToggle("AutoReplay", {
     Title = "Auto Replay",
-    Description = "Auto Replay",
+    Description = "Auto Replay (Victory + Defeat)",
     Default = false,
     Callback = function(state)
         autoReplay = state
