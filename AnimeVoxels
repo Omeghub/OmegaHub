@@ -27,6 +27,7 @@ LocalPlayer.OnTeleport:Connect(function()
         loadstring(game:HttpGet("]]..ScriptURL..[[", true))()
     ]])
 end)
+
 -- =========================================================
 -- CHARGEMENT DE FLUENT ET INTERFACE
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -44,7 +45,7 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "swords" }),
-    Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
+    --Misc = Window:AddTab({ Title = "Misc", Icon = "flame" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 -- =========================================================
@@ -62,10 +63,7 @@ task.spawn(function()
                 }
             }
 
-            game:GetService("ReplicatedStorage")
-                :WaitForChild("Remotes")
-                :WaitForChild("Input")
-                :FireServer(unpack(args))
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Input"):FireServer(unpack(args))
         end
         
         task.wait(0.1)
@@ -74,7 +72,7 @@ end)
 
 Tabs.Main:AddToggle("AutoAttack",{
     Title = "Auto Attack",
-    Description = "Attaque automatiquement",
+    Description = "Auto Attack",
     Default = false,
     Callback = function(state)
         autoAttack = state
@@ -125,7 +123,7 @@ end)
 
 Tabs.Main:AddToggle("AutoSkill", {
     Title = "Auto Skill",
-    Description = "Lance tous les skills toutes les 2 secondes",
+    Description = "Auto Skill",
     Default = false,
     Callback = function(state)
         autoSkill = state
@@ -169,7 +167,7 @@ local function StopFly()
 end
 
 Tabs.Main:AddToggle("AutoTPMob", {
-    Title = "Auto TP Mobs (Marker Priority)",
+    Title = "Auto TP Mobs",
     Default = false,
     Callback = function(value)
         autoTP = value
@@ -250,7 +248,7 @@ task.spawn(function()
                 local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
                 if not mobHRP then continue end
 
-                local targetPos = mobHRP.Position + Vector3.new(0, distance, 0)
+                local targetPos = mobHRP.Position + Vector3.new(0, -distance, 0)
 
                 hrp.CFrame = CFrame.new(targetPos)
 
@@ -322,7 +320,7 @@ end)
 
 Tabs.Main:AddToggle("AutoReplay", {
     Title = "Auto Replay",
-    Description = "Auto Replay (Victory + Defeat)",
+    Description = "Auto Replay",
     Default = false,
     Callback = function(state)
         autoReplay = state
