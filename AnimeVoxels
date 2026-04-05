@@ -278,7 +278,7 @@ local player = Players.LocalPlayer
 
 local function getRemote()
     local components = workspace:FindFirstChild("MainWorkspaceComponents")
-    local fx = components and components:FindFirstChild("FXx")
+    local fx = components and components:FindFirstChild("FX")
     local remote = fx and fx:FindFirstChild("RemoteEvent")
 
     return remote
