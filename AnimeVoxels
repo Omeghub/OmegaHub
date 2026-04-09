@@ -48,8 +48,80 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 -- =========================================================
--- AUTO ATTACK
+-- AUTO ATTACK + DMG VOID
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
 local autoAttack = false
+local dmgVoid = false
+
+local trackedMobs = {}
+local connections = {}
+
+local function getMobTorso(mob)
+    return mob:FindFirstChild("HumanoidRootPart")
+        or mob:FindFirstChild("Torso")
+        or mob:FindFirstChild("UpperTorso")
+end
+
+local function voidMob(mob)
+    local torso = getMobTorso(mob)
+    if torso then
+        torso.CFrame = CFrame.new(0, -9999, 0)
+    end
+end
+
+local function trackMob(mob)
+    if trackedMobs[mob] then return end
+
+    local humanoid = mob:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    trackedMobs[mob] = true
+
+    local lastHealth = humanoid.Health
+
+    connections[mob] = humanoid.HealthChanged:Connect(function(newHealth)
+        if not dmgVoid then return end
+
+        if newHealth < lastHealth then
+            voidMob(mob)
+        end
+
+        lastHealth = newHealth
+    end)
+end
+
+local function startTracking()
+    local livingFolder = workspace:WaitForChild("MainWorkspaceComponents"):WaitForChild("Living")
+
+    for _, mob in pairs(livingFolder:GetChildren()) do
+        if mob.Name ~= player.Name then
+            trackMob(mob)
+        end
+    end
+
+    connections["spawn"] = livingFolder.ChildAdded:Connect(function(mob)
+        task.wait(0.1)
+        if mob.Name ~= player.Name then
+            trackMob(mob)
+        end
+    end)
+end
+
+local function stopTracking()
+    for _, conn in pairs(connections) do
+        if typeof(conn) == "RBXScriptConnection" then
+            conn:Disconnect()
+        end
+    end
+
+    trackedMobs = {}
+    connections = {}
+end
 
 task.spawn(function()
     while true do
@@ -57,24 +129,36 @@ task.spawn(function()
             local args = {
                 Enum.KeyCode.Unknown,
                 Enum.UserInputType.MouseButton1,
-                [4] = {
-                    holdingControl = false
-                }
+                [4] = { holdingControl = false }
             }
 
-            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Input"):FireServer(unpack(args))
+            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Input"):FireServer(unpack(args))
         end
         
         task.wait(0.1)
     end
 end)
 
+
 Tabs.Main:AddToggle("AutoAttack",{
     Title = "Auto Attack",
-    Description = "Auto Attack",
     Default = false,
     Callback = function(state)
         autoAttack = state
+    end
+})
+
+Tabs.Main:AddToggle("DmgVoid",{
+    Title = "Damage Void (Kill Fast)",
+    Default = false,
+    Callback = function(state)
+        dmgVoid = state
+
+        if state then
+            startTracking()
+        else
+            stopTracking()
+        end
     end
 })
 -- =========================================================
@@ -129,7 +213,7 @@ Tabs.Main:AddToggle("AutoSkill", {
     end
 })
 -- =========================================================
--- AUTO TP MOBS
+-- AUTO TP MOBS (FIX VOID + OPTIMIZED)
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -165,6 +249,7 @@ local function StopFly()
     if BV then BV:Destroy() BV = nil end
 end
 
+-- UI
 Tabs.Main:AddToggle("AutoTPMob", {
     Title = "Auto TP Mobs",
     Default = false,
@@ -190,10 +275,20 @@ local function isPlayer(mob)
 end
 
 local function getAliveMob()
+    local char = player.Character
+    local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+
     for _, mob in pairs(liveFolder:GetChildren()) do
         if not isPlayer(mob) then
             local hum = mob:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 then
+            local hrp = mob:FindFirstChild("HumanoidRootPart")
+
+            if hum and hrp and hum.Health > 0 then
+                
+                if hrp.Position.Y < -50 then continue end
+
+                if myHRP and (myHRP.Position - hrp.Position).Magnitude > 1000 then continue end
+
                 return mob
             end
         end
@@ -209,7 +304,6 @@ local function getMarker()
 end
 
 task.spawn(function()
-
     while task.wait(0.05) do
 
         if autoTP then
@@ -234,12 +328,18 @@ task.spawn(function()
                 continue
             end
 
-            if not currentMob
-            or not currentMob.Parent
-            or isPlayer(currentMob)
-            or not currentMob:FindFirstChildOfClass("Humanoid")
-            or currentMob:FindFirstChildOfClass("Humanoid").Health <= 0 then
+            if currentMob then
+                local mobHRP = currentMob:FindFirstChild("HumanoidRootPart")
+                if not currentMob.Parent
+                or isPlayer(currentMob)
+                or not currentMob:FindFirstChildOfClass("Humanoid")
+                or currentMob:FindFirstChildOfClass("Humanoid").Health <= 0
+                or (mobHRP and mobHRP.Position.Y < -50) then
+                    currentMob = nil
+                end
+            end
 
+            if not currentMob then
                 currentMob = getAliveMob()
             end
 
@@ -262,9 +362,7 @@ task.spawn(function()
                 end
             end
         end
-
     end
-
 end)
 -- =========================================================
 -- AUTO REPLAY LOOP (SPAM REMOTE)
